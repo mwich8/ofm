@@ -78,23 +78,16 @@ blank_pos_website_2 = "%7Calter%7C%7C&aso=default&ajax=1"
 # Navigate to website
 session = requests.Session()
 constructed_website = blank_pos_website_1 + positions[0] + blank_pos_website_2
-marktwert_website_response = session.get(marktwert_website)
+marktwert_website_response = session.get(constructed_website)
+#print(marktwert_website_response)
 soup = BeautifulSoup(marktwert_website_response.content)
-
-
-def findTRs(beautifulSoup):
-   "Find TRs"
-   table_content_div = beautifulSoup.find('div', {'id':'data_listings2_id_0'})
-   form = table_content_div.findAll('form')[1]
-   return form.findAll('tr')
-
-trs = findTRs(soup)
+trs = soup.findAll('tr')
 
 def filterTRs(trs):
     "Filter TRs"
     # removing header and footers
-    del trs[0]
-    del trs[-1]
+    for x in range(0,5):
+        del trs[0]
     del trs[-1]
     del trs[-1]
     # remove young players
@@ -105,6 +98,7 @@ def filterTRs(trs):
         del trs[-1]
 
 filterTRs(trs)
+
 
 def setupMatrix(mW_matrix):
     "Insert values in matrix and filter players with incorrect strength"
@@ -179,10 +173,6 @@ for i in range(top_n_transfers,len(spieler_mit_gewinn)):
         top_n_list[lowest_top_transfer_index] = spieler_mit_gewinn[i]
     # print(top_n_list[lowest_top_transfer_index])
 
-'''
-for t in top_n_list:
-    print(t)
-'''
 
 # Sort Top-List by profit
 top_n_list.sort(lambda x, y: cmp(y[3], x[3]))
@@ -190,7 +180,6 @@ top_n_list.sort(lambda x, y: cmp(y[3], x[3]))
 
 for s in top_n_list:
     print(s)
-
 
 
 
