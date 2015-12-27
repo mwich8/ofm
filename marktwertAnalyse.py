@@ -43,7 +43,7 @@ alter_range = max_alter-min_alter
 
 # Bisher nur Stärke 0-10
 min_staerke = 4
-max_staerke = 8
+max_staerke = 10
 staerke_range = max_staerke-min_staerke
 
 numberOfValues = 12
@@ -62,7 +62,7 @@ kosten_trainingslager_pro_saison = ((kosten_trainingslager/kadergroesse) + koste
 number_of_seasons = 1
 
 
-budget = 10000000
+budget = 5000000
 
 top_n_transfers = 10
 
@@ -185,13 +185,11 @@ for s in top_n_list:
     print(s)
 '''
 
-
+all_top_transfers = []
 def main():
     for pos in range(0,len(positions)):
         marktwert_matrix = [[0 for x in range(numberOfValues)] for x in range(alter_range)]
         spieler_mit_gewinn = []
-
-        print(positions[pos])
 
         # Navigate to website
         session = requests.Session()
@@ -279,11 +277,16 @@ def main():
         top_n_list.sort(lambda x, y: cmp(y[3], x[3]))
 
         for s in top_n_list:
-            print(s)
+            all_top_transfers.append(s)
+            # print(s)
 
 
 main()
 
+all_top_transfers.sort(lambda x, y: cmp(y[3], x[3]))
+
+for t in range(0,top_n_transfers):
+    print(all_top_transfers[t])
 
 
 
