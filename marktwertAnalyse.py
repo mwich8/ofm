@@ -62,7 +62,7 @@ kosten_trainingslager_pro_saison = ((kosten_trainingslager/kadergroesse) + koste
 number_of_seasons = 1
 
 
-budget = 5000000
+budget = 4000000
 
 top_n_transfers = 10
 
