@@ -102,15 +102,26 @@ transfermarkt_website = "http://v7.www.onlinefussballmanager.de/010_transfer/tra
 spielerwechsel_website = "http://v7.www.onlinefussballmanager.de/transfer/spielerwechsel.php"
 spieler_mitbieten_website = "http://v7.www.onlinefussballmanager.de/010_transfer/transfermarkt.php?aktion=mitbieten&spielerid="
 
+def main():
+    player_database = []
+    soup = Navigate_to_website(main_website, loginData, transfermarkt_website, transfermarkt_suche)
+    trs = Get_player_trs(soup)
+    player_IDs = Get_player_IDs(trs)
+    bids = Get_bids(soup)
+    Fill_player_database(player_database,trs,player_IDs,bids)
+    for player in player_database:
+        print(player)
+
 # Analyse Transfermarkt
 # Navigate to transfermarkt
-def navigateToWebsite(login_website, login_data, dest_website, dest_data):
+def Navigate_to_website(login_website, login_data, dest_website, dest_data):
     session = requests.Session()
     login_website_response = session.get(login_website)
     session.post(login_website, data=login_data, headers={"Referer": login_website})
     dest_website_response = session.post(dest_website,data=dest_data)
     return BeautifulSoup(dest_website_response.content)
 
+'''
 session = requests.Session()
 main_website_response = session.get(main_website)
 session.post(main_website, data=loginData, headers={"Referer": main_website})
@@ -118,12 +129,26 @@ transfer_website_response = session.post(transfermarkt_website,data=transfermark
 soup = BeautifulSoup(transfer_website_response.content)
 
 player_database = []
+'''
 
+def Get_player_trs(soup):
+    trs = []
+    even_listings = soup.findAll('tr', attrs={"bgcolor":"#f1f1f2"})
+    odd_listings = soup.findAll('tr', attrs={"bgcolor":"#dedede"})
+    # initialize list
+    for i in range(0,(len(even_listings)+len(odd_listings))):
+        trs.append(0)
+    # add tr at odd row
+    for g in range(0,len(even_listings)):
+        trs[2 * g] = even_listings[g]
+    # add tr at even row
+    for u in range(0,len(odd_listings)):
+        trs[1 + (2 * u)] = odd_listings[u]
+    return trs
 
+'''
 gerade_listen_nummern = soup.findAll('tr', attrs={"bgcolor":"#f1f1f2"})
 ungerade_listen_nummern = soup.findAll('tr', attrs={"bgcolor":"#dedede"})
-# print(len(test)+len(test2))
-# print(test[0])
 
 # initialize list
 trs = []
@@ -135,35 +160,94 @@ for g in range(0,len(gerade_listen_nummern)):
 # add tr at even row
 for u in range(0,len(ungerade_listen_nummern)):
     trs[1 + (2 * u)] = ungerade_listen_nummern[u]
+'''
 
+
+def Get_player_IDs(trs):
+    hrefs = []
+    player_IDs = []
+    # Find all links in each tr
+    for tr in trs:
+        new_hrefs = tr.findAll('a')
+        for n in new_hrefs:
+            hrefs.append(n)
+    # extract the ID
+    for i in range(0,len(hrefs)):
+        if (i % 3) == 1:
+            player_id = str(hrefs[i]['href'])[8:17]
+            player_IDs.append(player_id)
+    return player_IDs
+
+def Get_bids(soup):
+    bids = []
+    nobrs = soup.findAll('nobr')
+    for nobr in nobrs:
+        bids.append(nobr.text)
+    return bids
+
+'''
 hrefs = []
 
 for tr in trs:
     new_hrefs = tr.findAll('a')
     for n in new_hrefs:
-        # print(n)
         hrefs.append(n)
-    # print(tr)
 
 player_IDs = []
 
 for i in range(0,len(hrefs)):
     if (i % 3) == 1:
         player_id = str(hrefs[i]['href'])[8:17]
-        # print(player_id)
         player_IDs.append(player_id)
 
-# TODO: Get noBrs
 
 gebote = []
 nobrs = soup.findAll('nobr')
 for nobr in nobrs:
     gebote.append(nobr.text)
+'''
 
 
-# TODO: call "buy"-site, get GEBOT and calc GebMwDiff
+def Fill_player_database(player_database, trs, player_IDs, bids):
+    counter = 0
+    for tr in trs:
+        tableDatas = tr.findAll('td')
+        id = player_IDs[counter]
+        name_length = str(tableDatas[5].text).find("Position:")
+        name = str(tableDatas[5].text)[:-((len(tableDatas[5].text))-name_length)]
+        if (name[-1] == 'P'):
+            name = name[:-1]
+        elif (name[-1] == 'o'):
+            if (name[-2] == 'P'):
+                name = name[:-2]
+        pos = str(tableDatas[1].text)
+        alter = int(str(tableDatas[9].text).split()[0])
+        staerke = int(tableDatas[7].text)
+        eP = int(str(tableDatas[13].text).replace(".",""))
+        tP = int(str(tableDatas[15].text).replace(".",""))
+        bid = bids[counter].replace(".","")
+        bid = bid.replace(" ","")
+        bid = int(bid.replace("€",""))
+        marktwert = str(tableDatas[17].text).replace(".","")
+        marktwert = marktwert.replace(" ","")
+        marktwert = int(marktwert.replace("€",""))
+        gebMWDiff = round((float(bid)/float(marktwert)-1), 3)
+        player = {
+            "ID": id,
+            "Name": name,
+            "Pos": pos,
+            "Alter": alter,
+            "Staerke": staerke,
+            "Erfahrungspunkte": eP,
+            "Trainingspunkte": tP,
+            "Gebot": bid,
+            "Marktwert": marktwert,
+            "GebotMarktWertDiff": gebMWDiff
+        }
+        counter = counter + 1
+        player_database.append(player)
 
-
+'''
 counter = 0
 for tr in trs:
     tableDatas = tr.findAll('td')
@@ -199,7 +283,14 @@ for tr in trs:
         "Marktwert": marktwert,
         "GebotMarktWertDiff": gebMWDiff
     }
-    '''
+
+    counter = counter + 1
+    player_database.append(player)
+    # print("------------------")
+'''
+
+
+'''
     print("ID: ", id)
     print("Name: ", name)
     print("Pos: ", pos)
@@ -210,14 +301,12 @@ for tr in trs:
     print("Gebot: ", gebot)
     print("Marktwert: ", marktwert)
     print("GebotMarktWertDiff: ",gebMWDiff)
-    '''
-    counter = counter + 1
-    player_database.append(player)
-    # print("------------------")
+'''
 
-
+'''
 for player in player_database:
     print(player)
+'''
 
 '''
     player = {
@@ -336,3 +425,6 @@ for x in range(0,len(player_database)):
 
 # print ("Spielberechnung" in r2.text | "OFM" in r2.text)
 '''
+
+
+main()
