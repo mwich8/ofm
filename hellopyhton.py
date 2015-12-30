@@ -2,6 +2,7 @@
 
 import sys
 import requests
+import urllib2
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 import re
 
@@ -62,7 +63,7 @@ transfermarkt_suchpositionen = [
 # max_Gebot_first(7), min_relMW_first(12), max_relMW_first(13)
 
 transfermarkt_suche = {
-    "orderby":12,
+    # "orderby":12,
     "suchpos0":0,
     "suchpos1":1,
     "suchpos2":2,
@@ -103,44 +104,22 @@ spieler_mitbieten_website = "http://v7.www.onlinefussballmanager.de/010_transfer
 
 # Analyse Transfermarkt
 # Navigate to transfermarkt
+def navigateToWebsite(login_website, login_data, dest_website, dest_data):
+    session = requests.Session()
+    login_website_response = session.get(login_website)
+    session.post(login_website, data=login_data, headers={"Referer": login_website})
+    dest_website_response = session.post(dest_website,data=dest_data)
+    return BeautifulSoup(dest_website_response.content)
+
 session = requests.Session()
 main_website_response = session.get(main_website)
 session.post(main_website, data=loginData, headers={"Referer": main_website})
 transfer_website_response = session.post(transfermarkt_website,data=transfermarkt_suche)
 soup = BeautifulSoup(transfer_website_response.content)
-divs = soup.findAll('div')
-'''
-for table in tables:
-    print(table)
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-    print("----------------------------------------")
-'''
 
 player_database = []
 
-# print(len(divs))
 
-# print(divs[1])
-
-# tables = divs[1].findAll('table')
-# print(len(tables))
-# print(divs[1])
-# new_div = divs[1].findAll('div')
-# print(new_div[0])
-# new_div = new_div[0].findAll('div', recursive=False)
-# transfer_table = new_div[0].findAll('tbody')
 gerade_listen_nummern = soup.findAll('tr', attrs={"bgcolor":"#f1f1f2"})
 ungerade_listen_nummern = soup.findAll('tr', attrs={"bgcolor":"#dedede"})
 # print(len(test)+len(test2))
@@ -174,17 +153,12 @@ for i in range(0,len(hrefs)):
         # print(player_id)
         player_IDs.append(player_id)
 
-'''
-for tr in trs:
-    tableDatas = tr.findAll('td')
-    for td in tableDatas:
-        print(td.text)
-        print("+++++++++++++++++++++")
-    print("---------------")
-    print("---------------")
-    print("---------------")
-'''
+# TODO: Get noBrs
 
+gebote = []
+nobrs = soup.findAll('nobr')
+for nobr in nobrs:
+    gebote.append(nobr.text)
 
 
 # TODO: call "buy"-site, get GEBOT and calc GebMwDiff
@@ -196,14 +170,36 @@ for tr in trs:
     id = player_IDs[counter]
     name_length = str(tableDatas[5].text).find("Position:")
     name = str(tableDatas[5].text)[:-((len(tableDatas[5].text))-name_length)]
+    if (name[-1] == 'P'):
+        name = name[:-1]
+    elif (name[-1] == 'o'):
+        if (name[-2] == 'P'):
+            name = name[:-2]
     pos = str(tableDatas[1].text)
     alter = int(str(tableDatas[9].text).split()[0])
     staerke = int(tableDatas[7].text)
-    eP = str(tableDatas[13].text).replace(".","")
-    tP = str(tableDatas[15].text).replace(".","")
+    eP = int(str(tableDatas[13].text).replace(".",""))
+    tP = int(str(tableDatas[15].text).replace(".",""))
+    gebot = gebote[counter].replace(".","")
+    gebot = gebot.replace(" ","")
+    gebot = int(gebot.replace("€",""))
     marktwert = str(tableDatas[17].text).replace(".","")
     marktwert = marktwert.replace(" ","")
-    marktwert = marktwert.replace("€","")
+    marktwert = int(marktwert.replace("€",""))
+    gebMWDiff = round((float(gebot)/float(marktwert)-1), 3)
+    player = {
+        "ID": id,
+        "Name": name,
+        "Pos": pos,
+        "Alter": alter,
+        "Staerke": staerke,
+        "Erfahrungspunkte": eP,
+        "Trainingspunkte": tP,
+        "Gebot": gebot,
+        "Marktwert": marktwert,
+        "GebotMarktWertDiff": gebMWDiff
+    }
+    '''
     print("ID: ", id)
     print("Name: ", name)
     print("Pos: ", pos)
@@ -211,11 +207,17 @@ for tr in trs:
     print("Staerke: ", staerke)
     print("Erfahrungspunkte: ", eP)
     print("Trainingspunkte: ", tP)
-    print("Gebot: ")
+    print("Gebot: ", gebot)
     print("Marktwert: ", marktwert)
-    print("GebotMarktWertDiff: ")
+    print("GebotMarktWertDiff: ",gebMWDiff)
+    '''
     counter = counter + 1
+    player_database.append(player)
+    # print("------------------")
 
+
+for player in player_database:
+    print(player)
 
 '''
     player = {
