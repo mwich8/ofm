@@ -65,7 +65,7 @@ anzahl_tuniere_pro_saision = 4
 anzahl_trainingslager_pro_saison = 4
 # Adjust age
 min_alter = 17
-max_alter = 30
+max_alter = 28
 alter_range = max_alter-min_alter+1
 
 # Bisher nur Stärke 0-19, danach nicht mehr profitable
@@ -74,12 +74,11 @@ min_staerke = 3
 max_staerke = 8
 staerke_range = max_staerke-min_staerke+1
 
-# TODO: Number of seasons doesn't work with "2" properly
 number_of_seasons = 1
 
-budget = 10000000
+budget = 4000000
 
-top_n_transfers = 10
+top_n_transfers = 5
 # TODO: Change to here
 
 kosten_tunier = 375000
@@ -151,6 +150,14 @@ def Parse_matrix(marktwert_matrix):
         # make pos a string
         m[0] = str(m[0])
 
+def Ausgaben_pro_spieler(staerke, number_of_seasons):
+    gehalt = gehalt_pro_saison[staerke]
+    if (number_of_seasons == 2):
+        gehalt = gehalt + gehalt_pro_saison[staerke + 1]
+    gesamt_trainings_kosten = (kosten_trainingslager_pro_saison * number_of_seasons) + (kosten_tunier * number_of_seasons)
+    ausgaben = gehalt + gesamt_trainings_kosten
+    return ausgaben
+
 def Calculate_profit_per_player(marktwert_matrix):
     spieler_mit_gewinn = []
     for i in range(0, alter_range - number_of_seasons):
@@ -169,11 +176,10 @@ def Calculate_profit_per_player(marktwert_matrix):
                     einkaufspreis = marktwert_matrix[i][j]
                     verkaufspreis = marktwert_matrix[i+number_of_seasons][j+number_of_seasons]
                     gewinn = verkaufspreis - einkaufspreis
-                    gehalt = gehalt_pro_saison[staerke]
-                    gewinn = gewinn - gehalt - kosten_trainingslager_pro_saison - kosten_turnier_pro_saison
+                    gewinn = gewinn - Ausgaben_pro_spieler(staerke, number_of_seasons)
                     if (gewinn > 0):
                         if (einkaufspreis <= budget):
-                            player = [pos, alter, staerke, gewinn]
+                            player = [pos, alter, staerke, gewinn, einkaufspreis]
                             spieler_mit_gewinn.append(player)
     return spieler_mit_gewinn
 
@@ -182,18 +188,21 @@ def Add_top_transfers(spieler_mit_gewinn, all_top_transfers):
     # Top Transfers
     spieler_mit_gewinn.sort(lambda x, y: cmp(y[3], x[3]))
     # Add first top_n_transfers to a new list
-    for x in range(0,top_n_transfers):
+    for x in range(0, min(top_n_transfers, len(spieler_mit_gewinn))):
         all_top_transfers.append(spieler_mit_gewinn[x])
 
 def Calculate_overall_top_transfers(all_top_transfers, all_top_transfers_sorted):
     # Sort all top transfers in all selected positions
     all_top_transfers.sort(lambda x, y: cmp(y[3], x[3]))
     # Add first top_n_transfers to the sorted all_top_tranfers_list
-    for x in range(0, top_n_transfers):
+    for x in range(0, min(top_n_transfers, len(all_top_transfers))):
         all_top_transfers_sorted.append(all_top_transfers[x])
-        print(all_top_transfers[x])
+        # print(all_top_transfers[x])
+    if (len(all_top_transfers_sorted) == 0):
+        print("KEINE PROFITABLEN TRANSFERS GEFUNDEN!")
+        print("Verfeinere deine Suche...SPAST!")
 
-def main():
+def Calculate_top_n_transfers():
     all_top_transfers = []
     all_top_transfers_sorted = []
     for pos in range(0,len(positions)):
@@ -210,8 +219,20 @@ def main():
         print("Scanned: " + positions[pos])
 
     Calculate_overall_top_transfers(all_top_transfers, all_top_transfers_sorted)
+    print("Players to buy:")
+    print("--------------------------")
+    for t in all_top_transfers_sorted:
+        print(t)
+    print("--------------------------")
+    return all_top_transfers_sorted     # for call in ofm transfermarkt-Suche
 
-main()
+
+def main():
+    Calculate_top_n_transfers()
+
+
+
+# main()
 
 
 

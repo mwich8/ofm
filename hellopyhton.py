@@ -3,11 +3,16 @@
 import sys
 import requests
 from BeautifulSoup import BeautifulSoup, SoupStrainer
-import re
+import marktwertAnalyse
+from Tkinter import *
+import ttk
+import json
 
 # Set decoding for getting rid of €-sign
 reload(sys)
 sys.setdefaultencoding('utf8')
+
+# AWP Formel: EP*TP*2/(EP+TP)
 
 # Set loginData
 loginData = {
@@ -36,9 +41,39 @@ spielerwechsel_data = {
     "showFilter":0,
     "strengthFrom2":1,
     "strengthTo2":27,
-    "page":4,
+    "page":0,
     "spieltag":21
 }
+
+awp_grenzen = [
+    0,
+    187,
+    359,
+    532,
+    807,
+    1.216,
+    1.769,
+    2.539,
+    3.500,
+    4.487,
+    5.450,
+    6.413,
+    7.418,
+    8.464,
+    9.534,
+    10.624,
+    11.701,
+    12.718,
+    13.710,
+    14.663,
+    15.667,
+    16.780,
+    17.852,
+    18.620,
+    19.534,
+    20.243,
+    20.539,
+]
 
 transfermarkt_suchpositionen = [
     "alle",     # value: 99
@@ -64,12 +99,12 @@ transfermarkt_suchpositionen = [
 transfermarkt_suche = {
     # "orderby":12,
     "suchpos0":0,
-    "suchpos1":1,
-    "suchpos2":2,
+    "suchpos1":0,
+    "suchpos2":0,
     "suchpos3":0,
     "suchpos4":0,
     "suchpos5":0,
-    "suchpos6":6,
+    "suchpos6":0,
     "suchpos7":0,
     "suchpos8":0,
     "suchpos9":0,
@@ -86,7 +121,7 @@ transfermarkt_suche = {
     "strength":"6;11",
     "staerke_von":6,
     "staerke_bis":11,
-    "rel_mw_abstand":-25,
+    "rel_mw_abstand":-30,
     "week":"7;7",
     "woche_von":7,
     "woche_bis":7,
@@ -100,13 +135,13 @@ hidden_website = "http://v7.www.onlinefussballmanager.de/head-int.php?spannend=0
 transfermarkt_website = "http://v7.www.onlinefussballmanager.de/010_transfer/transfermarkt.php"
 spielerwechsel_website = "http://v7.www.onlinefussballmanager.de/transfer/spielerwechsel.php"
 spieler_mitbieten_website = "http://v7.www.onlinefussballmanager.de/010_transfer/transfermarkt.php?aktion=mitbieten&spielerid="
+spieler_beobachten_website = "http://v7.www.onlinefussballmanager.de/010_transfer/beobachten.request.php?spielerid="
 
 
 
 # Analyse Transfermarkt
 # Navigate to transfermarkt
-def Navigate_to_website(login_website, login_data, dest_website, dest_data):
-    session = requests.Session()
+def Navigate_to_website(session, login_website, login_data, dest_website, dest_data):
     login_website_response = session.get(login_website)
     session.post(login_website, data=login_data, headers={"Referer": login_website})
     dest_website_response = session.post(dest_website,data=dest_data)
@@ -166,6 +201,7 @@ def Fill_player_database(player_database, trs, player_IDs, bids):
         staerke = int(tableDatas[7].text)
         eP = int(str(tableDatas[13].text).replace(".",""))
         tP = int(str(tableDatas[15].text).replace(".",""))
+        awp = (eP*tP*2)/(eP+tP)
         bid = bids[counter].replace(".","")
         bid = bid.replace(" ","")
         bid = int(bid.replace("€",""))
@@ -173,6 +209,7 @@ def Fill_player_database(player_database, trs, player_IDs, bids):
         marktwert = marktwert.replace(" ","")
         marktwert = int(marktwert.replace("€",""))
         gebMWDiff = round((float(bid)/float(marktwert)-1), 3)
+        min_ep = (awp_grenzen[staerke] + awp_grenzen[staerke-1])/2
         player = {
             "ID": id,
             "Name": name,
@@ -181,12 +218,19 @@ def Fill_player_database(player_database, trs, player_IDs, bids):
             "Staerke": staerke,
             "Erfahrungspunkte": eP,
             "Trainingspunkte": tP,
+            "AWP": awp,
             "Gebot": bid,
             "Marktwert": marktwert,
             "GebotMarktWertDiff": gebMWDiff
         }
         counter = counter + 1
-        player_database.append(player)
+        if (eP > min_ep):
+            player_database.append(player)
+
+def Bid_on_player(session, player_ID):
+    print("Bid on player: " + player_ID)
+    constructed_website = spieler_beobachten_website + str(player_ID)
+    session.get(constructed_website)
 
 
 '''
@@ -273,37 +317,200 @@ for x in range(0,len(player_database)):
 
 # print ("Spielberechnung" in r2.text | "OFM" in r2.text)
 
+def Search_in_Transfermarkt(profitable_transfers):
+    player_database = []
+    suchpos_prestring = "suchpos"
+    for p in profitable_transfers:
+        # print(p)
+        for pos in range(0, len(transfermarkt_suchpositionen)):
+            suchpos = suchpos_prestring + str(pos)
+            transfermarkt_suche[suchpos] = 0
+        suchpos_index = transfermarkt_suchpositionen.index(p[0])
+        suchpos = suchpos_prestring + str(suchpos_index)
+        transfermarkt_suche[suchpos] = suchpos_index
+        min_alter = max_alter = p[1]
+        alter_range = str(str(min_alter)+";"+str(max_alter))
+        budget = marktwertAnalyse.budget
+        min_staerke = max_starke = p[2]
+        staerke_range = str(str(min_staerke)+";"+str(max_starke))
+        rel_mw_abstand = -30
+        transfermarkt_suche['alt_von'] = min_alter
+        transfermarkt_suche['alt_bis'] = max_alter
+        transfermarkt_suche['age'] = alter_range
+        transfermarkt_suche['max_gebot'] = budget
+        transfermarkt_suche['staerke_von'] = min_staerke
+        transfermarkt_suche['staerke_bis'] = max_starke
+        transfermarkt_suche['strength'] = staerke_range
+        transfermarkt_suche['rel_mw_abstand'] = rel_mw_abstand
+        session = requests.Session()
+        soup = Navigate_to_website(session, main_website, loginData, transfermarkt_website, transfermarkt_suche)
+        trs = Get_player_trs(soup)
+        player_IDs = Get_player_IDs(trs)
+        bids = Get_bids(soup)
+        Fill_player_database(player_database,trs,player_IDs,bids)
+    player_database = sorted(player_database, key=lambda k: k['AWP'])
+    for player in player_database:
+        print(player)
+    for i in range(len(player_database)-5, len(player_database)):
+        Bid_on_player(session, player_database[i]['ID'])
 
+def Change_spielerwechsel_data(pos, alter, staerke):
+    pos_index = transfermarkt_suchpositionen.index(pos)
+    spielerwechsel_data['pos'] = pos_index
+    spielerwechsel_data['oldFrom'] = alter
+    spielerwechsel_data['oldTo'] = alter
+    spielerwechsel_data['strengthFrom2'] = staerke
+    spielerwechsel_data['strengthTo2'] = staerke
+
+def Analyse_realistic_price(session, file, pos, alter, staerke):
+    Change_spielerwechsel_data(pos, alter, staerke)
+    analysis_string = str("Analysing " + str(pos) + " " + str(alter) + " " + str(staerke))
+    file.write(analysis_string + "\n")
+    print(analysis_string)
+    average_price = 0
+    gesamt_spielerTyp_summe = 0
+    gesamt_spielerTyp_anzahl = 0
+    # TODO: Aktuellen spieltag automatisch lesen
+    for spieltag in range(0,34 + 1):
+        spielerwechsel_data['spieltag'] = spieltag
+        spielerwechsel_website_response = session.post(spielerwechsel_website, data=spielerwechsel_data)
+        soup = BeautifulSoup(spielerwechsel_website_response.content)
+        tbody = soup.find('tbody')
+        tableRows = tbody.findAll('tr', recursive=False)
+        spieltag_summe = 0
+        spieltag_spieler_anzahl = len(tableRows)
+        for tr in tableRows:
+            tableDatas = tr.findAll('td', recursive=False)
+            transfersumme = str(tableDatas[len(tableDatas)-3].text)
+            transfersumme = transfersumme.replace(".","")
+            transfersumme = transfersumme.replace(" ","")
+            transfersumme = int(transfersumme.replace("€",""))
+            spieltag_summe += transfersumme
+            # print(transfersumme)
+        if (spieltag_spieler_anzahl > 0):
+            average_price = str(spieltag_summe/spieltag_spieler_anzahl)
+            concat_string = str(spieltag) + " " + average_price
+            file.write(concat_string + "\n")
+            print(concat_string)
+        gesamt_spielerTyp_summe += spieltag_summe
+        gesamt_spielerTyp_anzahl += spieltag_spieler_anzahl
+    if (gesamt_spielerTyp_anzahl > 0):
+        anzahl_string = "Found " + str(gesamt_spielerTyp_anzahl) + " Spieler!"
+        file.write(anzahl_string + "\n")
+        print(anzahl_string)
+        average_price = gesamt_spielerTyp_summe/gesamt_spielerTyp_anzahl
+    return average_price
+
+def Analyse_realistic_profit(session, pos, alter, staerke, theoretischer_gewinn, marktwert):
+    "Analyses the realstic profit per profit by scanning Spielerwechsel"
+    file = open("analysis.txt", 'a')
+    print("--------BUY-------")
+    file.write("--------BUY-------")
+    transfersumme_average_buy = Analyse_realistic_price(session, file, pos, alter, staerke)
+    print("--------SELL-------")
+    file.write("--------SELL-------")
+    transfersumme_average_sell = Analyse_realistic_price(session, file, pos, alter + marktwertAnalyse.number_of_seasons, staerke + marktwertAnalyse.number_of_seasons)
+    real_profit = transfersumme_average_sell - transfersumme_average_buy
+    real_profit = real_profit - marktwertAnalyse.Ausgaben_pro_spieler(staerke, marktwertAnalyse.number_of_seasons)
+    spieler = {
+        "Pos": pos,
+        "Alter": alter,
+        "Staerke": staerke,
+        "Theoretischer_gewinn": theoretischer_gewinn,
+        "Marktwert": marktwert,
+        "Transfersumme_average_buy": transfersumme_average_buy,
+        "Transfersumme_average_sell": transfersumme_average_sell,
+        "Realistischer_gewinn": real_profit
+    }
+    spieler_json = json.dumps(spieler, ensure_ascii=False)
+    print(spieler_json)
+    file.write(spieler_json + "\n")
+    file.close()
+    return spieler
+
+def Write_Input_to_file(file):
+    for position in marktwertAnalyse.positions:
+        file.write(position)
+    # file.write
 
 def main():
     # Get player data from transfermarkt
-    # Set values for your search
-    min_alter = 21
-    max_alter = 23
-    alter_range = str(str(min_alter)+";"+str(max_alter))
-    budget = 30000000
-    min_staerke = 6
-    max_starke = 7
-    staerke_range = str(str(min_staerke)+";"+str(max_starke))
-    rel_mw_abstand = -25
-    # Update data payload for search
-    transfermarkt_suche['alt_von'] = min_alter
-    transfermarkt_suche['alt_bis'] = max_alter
-    transfermarkt_suche['age'] = alter_range
-    transfermarkt_suche['max_gebot'] = budget
-    transfermarkt_suche['staerke_von'] = min_staerke
-    transfermarkt_suche['staerke_bis'] = max_starke
-    transfermarkt_suche['strength'] = staerke_range
-    transfermarkt_suche['rel_mw_abstand'] = rel_mw_abstand
-    player_database = []
-    # Retrieve players which fits your boundaries
-    soup = Navigate_to_website(main_website, loginData, transfermarkt_website, transfermarkt_suche)
-    trs = Get_player_trs(soup)
-    player_IDs = Get_player_IDs(trs)
-    bids = Get_bids(soup)
-    Fill_player_database(player_database,trs,player_IDs,bids)
-    # prints out the player found by the methods
-    for player in player_database:
-        print(player)
+    # Set values for your search in marktwertAnalyse.
+    profitable_transfers = marktwertAnalyse.Calculate_top_n_transfers()
+    session = requests.Session()
+    session.post(main_website, data=loginData, headers={"Referer": main_website})
+    # Delete current analysis
+    open("analysis.txt", 'w')
+    spieler_dicts = []
+    for p in profitable_transfers:
+        spieler = Analyse_realistic_profit(session, p[0], p[1], p[2], p[3], p[4])
+        spieler_dicts.append(spieler)
+    spieler_dicts = sorted(spieler_dicts, key=lambda k: k['Marktwert'])
+    for s in spieler_dicts:
+        print(s)
+    # Search_in_Transfermarkt(profitable_transfers)
+
+
+'''
+# TODO: MAKE A GUI
+
+def calculate(*args):
+    try:
+        value = float(budget_per_player.get())
+        current_status = status["text"] + "Help!"
+        status["text"] = current_status
+        # meters.set((0.3048 * value * 10000.0 + 0.5)/10000.0)
+    except ValueError:
+        pass
+
+root = Tk()
+root.title("Which player to buy?")
+
+mainframe = ttk.Frame(root, padding="3 3 12 12")
+mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+mainframe.columnconfigure(0, weight=1)
+mainframe.rowconfigure(0, weight=1)
+
+budget_per_player = IntVar()
+text = Text(root)
+min_strength = IntVar()
+max_strength = IntVar()
+
+min_age = IntVar()
+max_age = IntVar()
+
+min_strength_slider = Scale( root, variable = min_strength, to=27, orient=HORIZONTAL)
+max_strength_slider = Scale( root, variable = max_strength, to=27, orient=HORIZONTAL)
+
+min_age_slider = Scale( root, variable = min_age, to=36, orient=HORIZONTAL)
+max_age_slider = Scale( root, variable = max_age, to=36, orient=HORIZONTAL)
+
+
+budget_entry = ttk.Entry(mainframe, width=12, textvariable=budget_per_player)
+budget_entry.grid(column=2, row=1, sticky=(W, E))
+
+status = ttk.Label(mainframe, text="")
+status.grid(row=5, columnspan=3, sticky=S)
+ttk.Button(mainframe, text="Calculate players in budget", command=calculate).grid(column=2, row=2, sticky=S)
+
+ttk.Label(mainframe, text="Budget per player").grid(column=1, row=1, sticky=E)
+ttk.Label(mainframe, text="€").grid(column=3, row=1, sticky=W)
+
+ttk.Label(mainframe, text="Stärke").grid(column=1, row=3, sticky=W)
+min_strength_slider.grid(column=2, row=3, sticky=W)
+max_strength_slider.grid(column=3, row=3, sticky=W)
+
+ttk.Label(mainframe, text="Alter").grid(column=1, row=4, sticky=W)
+min_age_slider.grid(column=2, row=4, sticky=W)
+max_age_slider.grid(column=3, row=4, sticky=W)
+
+for child in mainframe.winfo_children(): child.grid_configure(padx=5, pady=5)
+
+budget_entry.focus()
+root.bind('<Return>', calculate)
+
+root.mainloop()
+'''
+
 
 main()
