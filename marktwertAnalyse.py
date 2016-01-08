@@ -61,7 +61,7 @@ positions = ["TW",
              "RS"]
 
 kadergroesse = 14
-anzahl_tuniere_pro_saision = 4
+anzahl_tuniere_pro_saison = 4
 anzahl_trainingslager_pro_saison = 4
 # Adjust age
 min_alter = 17
@@ -74,7 +74,7 @@ min_staerke = 3
 max_staerke = 8
 staerke_range = max_staerke-min_staerke+1
 
-number_of_seasons = 1
+anz_saison = 1
 
 budget = 4000000
 
@@ -87,7 +87,7 @@ kosten_trainingslager = 250000
 kosten_trainingslager_pro_spieler = 15500
 
 
-kosten_turnier_pro_saison = ((kosten_tunier/kadergroesse) + kosten_tunier_pro_spieler) * anzahl_tuniere_pro_saision
+kosten_turnier_pro_saison = ((kosten_tunier/kadergroesse) + kosten_tunier_pro_spieler) * anzahl_tuniere_pro_saison
 kosten_trainingslager_pro_saison = ((kosten_trainingslager/kadergroesse) + kosten_trainingslager_pro_spieler) * anzahl_trainingslager_pro_saison
 
 
@@ -150,33 +150,33 @@ def Parse_matrix(marktwert_matrix):
         # make pos a string
         m[0] = str(m[0])
 
-def Ausgaben_pro_spieler(staerke, number_of_seasons):
+def Ausgaben_pro_spieler(staerke, anz_saison):
     gehalt = gehalt_pro_saison[staerke]
-    if (number_of_seasons == 2):
+    if (anz_saison == 2):
         gehalt = gehalt + gehalt_pro_saison[staerke + 1]
-    gesamt_trainings_kosten = (kosten_trainingslager_pro_saison * number_of_seasons) + (kosten_tunier * number_of_seasons)
+    gesamt_trainings_kosten = (kosten_trainingslager_pro_saison * anz_saison) + (kosten_tunier * anz_saison)
     ausgaben = gehalt + gesamt_trainings_kosten
     return ausgaben
 
 def Calculate_profit_per_player(marktwert_matrix):
     spieler_mit_gewinn = []
-    for i in range(0, alter_range - number_of_seasons):
+    for i in range(0, alter_range - anz_saison):
             # Get Position
             pos = marktwert_matrix[i][0]
             # Get Alter
             alter = marktwert_matrix[i][1]
-            for j in range(2, 2 + staerke_range - number_of_seasons):
+            for j in range(2, 2 + staerke_range - anz_saison):
                 # Get Stärke
                 staerke = min_staerke + (j-2)
-                if (marktwert_matrix[i+number_of_seasons][j+number_of_seasons] == 0):
+                if (marktwert_matrix[i+anz_saison][j+anz_saison] == 0):
                     gewinn = -1
                 elif (marktwert_matrix[i][j] == 0):
                     gewinn = -1
                 else:
                     einkaufspreis = marktwert_matrix[i][j]
-                    verkaufspreis = marktwert_matrix[i+number_of_seasons][j+number_of_seasons]
+                    verkaufspreis = marktwert_matrix[i+anz_saison][j+anz_saison]
                     gewinn = verkaufspreis - einkaufspreis
-                    gewinn = gewinn - Ausgaben_pro_spieler(staerke, number_of_seasons)
+                    gewinn = gewinn - Ausgaben_pro_spieler(staerke, anz_saison)
                     if (gewinn > 0):
                         if (einkaufspreis <= budget):
                             player = [pos, alter, staerke, gewinn, einkaufspreis]

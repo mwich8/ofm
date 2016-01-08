@@ -7,12 +7,15 @@ import marktwertAnalyse
 from Tkinter import *
 import ttk
 import json
+import linecache
 
 # Set decoding for getting rid of €-sign
 reload(sys)
 sys.setdefaultencoding('utf8')
 
 # AWP Formel: EP*TP*2/(EP+TP)
+
+file_name = "analysis.txt"
 
 # Set loginData
 loginData = {
@@ -362,7 +365,14 @@ def Change_spielerwechsel_data(pos, alter, staerke):
     spielerwechsel_data['strengthFrom2'] = staerke
     spielerwechsel_data['strengthTo2'] = staerke
 
-def Analyse_realistic_price(session, file, pos, alter, staerke):
+def Get_aktuellen_spieltag(session):
+    spielerwechsel_website_response = session.get(spielerwechsel_website)
+    soup = BeautifulSoup(spielerwechsel_website_response.content)
+    p_tag = soup.find("p", attrs= {"class": "white bold float"})
+    aktueller_spieltag = int(re.findall('\d+', str(p_tag.text))[0])
+    return aktueller_spieltag
+
+def Analyse_realistic_price(session, aktueller_spieltag, file, pos, alter, staerke):
     Change_spielerwechsel_data(pos, alter, staerke)
     analysis_string = str("Analysing " + str(pos) + " " + str(alter) + " " + str(staerke))
     file.write(analysis_string + "\n")
@@ -370,8 +380,7 @@ def Analyse_realistic_price(session, file, pos, alter, staerke):
     average_price = 0
     gesamt_spielerTyp_summe = 0
     gesamt_spielerTyp_anzahl = 0
-    # TODO: Aktuellen spieltag automatisch lesen
-    for spieltag in range(0,34 + 1):
+    for spieltag in range(0,aktueller_spieltag + 1):
         spielerwechsel_data['spieltag'] = spieltag
         spielerwechsel_website_response = session.post(spielerwechsel_website, data=spielerwechsel_data)
         soup = BeautifulSoup(spielerwechsel_website_response.content)
@@ -389,29 +398,30 @@ def Analyse_realistic_price(session, file, pos, alter, staerke):
             # print(transfersumme)
         if (spieltag_spieler_anzahl > 0):
             average_price = str(spieltag_summe/spieltag_spieler_anzahl)
-            concat_string = str(spieltag) + " " + average_price
-            file.write(concat_string + "\n")
-            print(concat_string)
+            file.write(average_price + "\n")
+            print(average_price)
+        else:
+            file.write("0" + "\n")
+            print("0")
         gesamt_spielerTyp_summe += spieltag_summe
         gesamt_spielerTyp_anzahl += spieltag_spieler_anzahl
     if (gesamt_spielerTyp_anzahl > 0):
         anzahl_string = "Found " + str(gesamt_spielerTyp_anzahl) + " Spieler!"
         file.write(anzahl_string + "\n")
-        print(anzahl_string)
         average_price = gesamt_spielerTyp_summe/gesamt_spielerTyp_anzahl
     return average_price
 
-def Analyse_realistic_profit(session, pos, alter, staerke, theoretischer_gewinn, marktwert):
+def Analyse_realistic_profit(session, aktueller_spieltag, pos, alter, staerke, theoretischer_gewinn, marktwert):
     "Analyses the realstic profit per profit by scanning Spielerwechsel"
-    file = open("analysis.txt", 'a')
+    file = open(file_name, 'a')
     print("--------BUY-------")
-    file.write("--------BUY-------")
-    transfersumme_average_buy = Analyse_realistic_price(session, file, pos, alter, staerke)
+    file.write("--------BUY-------\n")
+    transfersumme_average_buy = Analyse_realistic_price(session, aktueller_spieltag, file, pos, alter, staerke)
     print("--------SELL-------")
-    file.write("--------SELL-------")
-    transfersumme_average_sell = Analyse_realistic_price(session, file, pos, alter + marktwertAnalyse.number_of_seasons, staerke + marktwertAnalyse.number_of_seasons)
+    file.write("--------SELL-------\n")
+    transfersumme_average_sell = Analyse_realistic_price(session, aktueller_spieltag, file, pos, alter + marktwertAnalyse.anz_saison, staerke + marktwertAnalyse.anz_saison)
     real_profit = transfersumme_average_sell - transfersumme_average_buy
-    real_profit = real_profit - marktwertAnalyse.Ausgaben_pro_spieler(staerke, marktwertAnalyse.number_of_seasons)
+    real_profit = real_profit - marktwertAnalyse.Ausgaben_pro_spieler(staerke, marktwertAnalyse.anz_saison)
     spieler = {
         "Pos": pos,
         "Alter": alter,
@@ -428,24 +438,119 @@ def Analyse_realistic_profit(session, pos, alter, staerke, theoretischer_gewinn,
     file.close()
     return spieler
 
+def Input_to_dict():
+    input_dict = {
+        "Positions": marktwertAnalyse.positions,
+        "Kadergroesse": marktwertAnalyse.kadergroesse,
+        "Anz_T_pro_saison": marktwertAnalyse.anzahl_tuniere_pro_saison,
+        "Anz_TL_pro_saison": marktwertAnalyse.anzahl_trainingslager_pro_saison,
+        "Min_alter": marktwertAnalyse.min_alter,
+        "Max_alter": marktwertAnalyse.max_alter,
+        "Min_staerke": marktwertAnalyse.min_staerke,
+        "Max_staerke": marktwertAnalyse.max_staerke,
+        "Anz_saisons": marktwertAnalyse.anz_saison,
+        "Budget": marktwertAnalyse.budget,
+        "Top_n_transfers": marktwertAnalyse.top_n_transfers
+    }
+    return input_dict
+
+
+budget = 4000000
+
+top_n_transfers = 5
+
 def Write_Input_to_file(file):
-    for position in marktwertAnalyse.positions:
-        file.write(position)
-    # file.write
+    input_dict = Input_to_dict()
+    input_json = json.dumps(input_dict, ensure_ascii=False)
+    file.write(input_json + "\n")
+
+def Compare_JSON_to_input(input_json):
+    is_same_input = True
+    anz_positions = len(input_json["Positions"])
+    for i in range(0, anz_positions):
+        if(input_json["Positions"][i] != marktwertAnalyse.positions[i]):
+            is_same_input = False
+            return is_same_input
+    if(input_json["Kadergroesse"] != marktwertAnalyse.kadergroesse):
+        is_same_input = False
+        return is_same_input
+    if(input_json["Anz_T_pro_saison"] != marktwertAnalyse.anzahl_tuniere_pro_saison):
+        is_same_input = False
+        return is_same_input
+    if(input_json["Anz_TL_pro_saison"] != marktwertAnalyse.anzahl_trainingslager_pro_saison):
+        is_same_input = False
+        return is_same_input
+    if(input_json["Min_alter"] != marktwertAnalyse.min_alter):
+        is_same_input = False
+        return is_same_input
+    if(input_json["Max_alter"] != marktwertAnalyse.max_alter):
+        is_same_input = False
+        return is_same_input
+    if(input_json["Min_staerke"] != marktwertAnalyse.min_staerke):
+        is_same_input = False
+        return is_same_input
+    if(input_json["Max_staerke"] != marktwertAnalyse.max_staerke):
+        is_same_input = False
+        return is_same_input
+    if(input_json["Budget"] != marktwertAnalyse.budget):
+        is_same_input = False
+        return is_same_input
+    if(input_json["Top_n_transfers"] != marktwertAnalyse.top_n_transfers):
+        is_same_input = False
+        return is_same_input
+    return is_same_input
+
+def Is_same_input():
+    file = open(file_name, 'r')
+    input_dict = file.readline()
+    file.close()
+    # print(input_dict)
+    input_json = json.loads(input_dict)
+    is_same_input = Compare_JSON_to_input(input_json)
+    return is_same_input
+
+def Write_transfers_to_file(file, profitable_transfers):
+    for transfer in profitable_transfers:
+        for data in transfer:
+            file.write(str(data) + " ")
+        file.write("\n")
+    file.close()
+
+def Read_transfers_from_file():
+    profitable_transfers = []
+    for i in range(2, marktwertAnalyse.top_n_transfers + 2):
+        spieler = linecache.getline(file_name, i)
+        spieler_as_list = str(spieler).split()
+        for j in range(1, len(spieler_as_list)):
+            spieler_as_list[j] = int(spieler_as_list[j])
+        profitable_transfers.append(spieler_as_list)
+        # print(spieler_as_list)
+    return profitable_transfers
+
 
 def main():
     # Get player data from transfermarkt
     # Set values for your search in marktwertAnalyse.
-    profitable_transfers = marktwertAnalyse.Calculate_top_n_transfers()
+    profitable_transfers = []
+    if Is_same_input():
+        profitable_transfers = Read_transfers_from_file()
+        for p in profitable_transfers:
+            print(p)
+    else:
+        profitable_transfers = marktwertAnalyse.Calculate_top_n_transfers()
+    # profitable_transfers = marktwertAnalyse.Calculate_top_n_transfers()
+    file = open(file_name, 'w')
+    Write_Input_to_file(file)
+    Write_transfers_to_file(file, profitable_transfers)
     session = requests.Session()
     session.post(main_website, data=loginData, headers={"Referer": main_website})
     # Delete current analysis
-    open("analysis.txt", 'w')
     spieler_dicts = []
+    aktueller_spieltag = Get_aktuellen_spieltag(session)
     for p in profitable_transfers:
-        spieler = Analyse_realistic_profit(session, p[0], p[1], p[2], p[3], p[4])
+        spieler = Analyse_realistic_profit(session, aktueller_spieltag, p[0], p[1], p[2], p[3], p[4])
         spieler_dicts.append(spieler)
-    spieler_dicts = sorted(spieler_dicts, key=lambda k: k['Marktwert'])
+    spieler_dicts = sorted(spieler_dicts, key=lambda k: k['Realistischer_gewinn'])
     for s in spieler_dicts:
         print(s)
     # Search_in_Transfermarkt(profitable_transfers)
