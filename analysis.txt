@@ -1,9 +1,9 @@
 {"Min_staerke": 3, "Positions": ["TW", "LIB", "LV", "LMD", "RMD", "RV", "VS", "LM", "DM", "ZM", "RM", "LS", "MS", "RS"], "Max_alter": 28, "Budget": 4000000, "Anz_saisons": 1, "Anz_TL_pro_saison": 4, "Anz_T_pro_saison": 4, "Min_alter": 17, "Max_staerke": 8, "Top_n_transfers": 5, "Kadergroesse": 14}
-{"Staerke": 7, "Theoretischer_gewinn": 1626094, "Marktwert": 1477036, "Pos": "RS", "Alter": 20}
-{"Staerke": 7, "Theoretischer_gewinn": 1826232, "Marktwert": 3661726, "Pos": "TW", "Alter": 19}
-{"Staerke": 7, "Theoretischer_gewinn": 1848514, "Marktwert": 2061712, "Pos": "MS", "Alter": 20}
-{"Staerke": 7, "Theoretischer_gewinn": 1897884, "Marktwert": 2655101, "Pos": "LS", "Alter": 19}
-{"Staerke": 7, "Theoretischer_gewinn": 1980692, "Marktwert": 2581898, "Pos": "RS", "Alter": 19}
+{"Theoretischer_gewinn": 1626094, "Staerke": 7, "Pos": "RS", "Marktwert_sell": 3687446, "Marktwert_buy": 1477036, "Alter": 20}
+{"Theoretischer_gewinn": 1826232, "Staerke": 7, "Pos": "TW", "Marktwert_sell": 6072274, "Marktwert_buy": 3661726, "Alter": 19}
+{"Theoretischer_gewinn": 1848514, "Staerke": 7, "Pos": "MS", "Marktwert_sell": 4494542, "Marktwert_buy": 2061712, "Alter": 20}
+{"Theoretischer_gewinn": 1897884, "Staerke": 7, "Pos": "LS", "Marktwert_sell": 5137301, "Marktwert_buy": 2655101, "Alter": 19}
+{"Theoretischer_gewinn": 1980692, "Staerke": 7, "Pos": "RS", "Marktwert_sell": 5146906, "Marktwert_buy": 2581898, "Alter": 19}
 --------BUY-------
 Analysing RS 20 7
 2155556
@@ -14,7 +14,7 @@ Analysing RS 21 8
 0
 3916500
 Found 6 Spieler!
-{"Theoretischer_gewinn": 1626094, "Marktwert": 1477036, "Transfersumme_average_buy": 2191783, "Staerke": 7, "Transfersumme_average_sell": 3916500, "Realistischer_gewinn": 1140401, "Pos": "RS", "Alter": 20}
+{"Theoretischer_gewinn": 1626094, "Marktwert_sell": 3687446, "Marktwert_buy": 1477036, "Transfersumme_average_buy": 2191783, "Staerke": 7, "Transfersumme_average_sell": 3916500, "Realistischer_gewinn": 1140401, "Pos": "RS", "Alter": 20}
 --------BUY-------
 Analysing TW 19 7
 8433347
@@ -25,7 +25,7 @@ Analysing TW 20 8
 10370000
 13000001
 Found 9 Spieler!
-{"Theoretischer_gewinn": 1826232, "Marktwert": 3661726, "Transfersumme_average_buy": 8576198, "Staerke": 7, "Transfersumme_average_sell": 11246667, "Realistischer_gewinn": 2086153, "Pos": "TW", "Alter": 19}
+{"Theoretischer_gewinn": 1826232, "Marktwert_sell": 6072274, "Marktwert_buy": 3661726, "Transfersumme_average_buy": 8576198, "Staerke": 7, "Transfersumme_average_sell": 11246667, "Realistischer_gewinn": 2086153, "Pos": "TW", "Alter": 19}
 --------BUY-------
 Analysing MS 20 7
 3265380
@@ -36,7 +36,7 @@ Analysing MS 21 8
 6492044
 6998686
 Found 12 Spieler!
-{"Theoretischer_gewinn": 1848514, "Marktwert": 2061712, "Transfersumme_average_buy": 3221409, "Staerke": 7, "Transfersumme_average_sell": 6787585, "Realistischer_gewinn": 2981860, "Pos": "MS", "Alter": 20}
+{"Theoretischer_gewinn": 1848514, "Marktwert_sell": 4494542, "Marktwert_buy": 2061712, "Transfersumme_average_buy": 3221409, "Staerke": 7, "Transfersumme_average_sell": 6787585, "Realistischer_gewinn": 2981860, "Pos": "MS", "Alter": 20}
 --------BUY-------
 Analysing LS 19 7
 5351144
@@ -47,7 +47,7 @@ Analysing LS 20 8
 0
 7000001
 Found 1 Spieler!
-{"Theoretischer_gewinn": 1897884, "Marktwert": 2655101, "Transfersumme_average_buy": 4552856, "Staerke": 7, "Transfersumme_average_sell": 7000001, "Realistischer_gewinn": 1862829, "Pos": "LS", "Alter": 19}
+{"Theoretischer_gewinn": 1897884, "Marktwert_sell": 5137301, "Marktwert_buy": 2655101, "Transfersumme_average_buy": 4552856, "Staerke": 7, "Transfersumme_average_sell": 7000001, "Realistischer_gewinn": 1862829, "Pos": "LS", "Alter": 19}
 --------BUY-------
 Analysing RS 19 7
 3750000
@@ -58,4 +58,10 @@ Analysing RS 20 8
 7000000
 8592223
 Found 4 Spieler!
-{"Theoretischer_gewinn": 1980692, "Marktwert": 2581898, "Transfersumme_average_buy": 3876109, "Staerke": 7, "Transfersumme_average_sell": 8194167, "Realistischer_gewinn": 3733742, "Pos": "RS", "Alter": 19}
+{"Theoretischer_gewinn": 1980692, "Marktwert_sell": 5146906, "Marktwert_buy": 2581898, "Transfersumme_average_buy": 3876109, "Staerke": 7, "Transfersumme_average_sell": 8194167, "Realistischer_gewinn": 3733742, "Pos": "RS", "Alter": 19}
+Profitablesten Spieler-Typen für Input
+{"Theoretischer_gewinn": 1980692, "Marktwert_sell": 5146906, "Marktwert_buy": 2581898, "Transfersumme_average_buy": 3876109, "Staerke": 7, "Transfersumme_average_sell": 8194167, "Realistischer_gewinn": 3733742, "Pos": "RS", "Alter": 19}
+{"Theoretischer_gewinn": 1848514, "Marktwert_sell": 4494542, "Marktwert_buy": 2061712, "Transfersumme_average_buy": 3221409, "Staerke": 7, "Transfersumme_average_sell": 6787585, "Realistischer_gewinn": 2981860, "Pos": "MS", "Alter": 20}
+{"Theoretischer_gewinn": 1826232, "Marktwert_sell": 6072274, "Marktwert_buy": 3661726, "Transfersumme_average_buy": 8576198, "Staerke": 7, "Transfersumme_average_sell": 11246667, "Realistischer_gewinn": 2086153, "Pos": "TW", "Alter": 19}
+{"Theoretischer_gewinn": 1897884, "Marktwert_sell": 5137301, "Marktwert_buy": 2655101, "Transfersumme_average_buy": 4552856, "Staerke": 7, "Transfersumme_average_sell": 7000001, "Realistischer_gewinn": 1862829, "Pos": "LS", "Alter": 19}
+{"Theoretischer_gewinn": 1626094, "Marktwert_sell": 3687446, "Marktwert_buy": 1477036, "Transfersumme_average_buy": 2191783, "Staerke": 7, "Transfersumme_average_sell": 3916500, "Realistischer_gewinn": 1140401, "Pos": "RS", "Alter": 20}

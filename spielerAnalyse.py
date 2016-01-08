@@ -8,6 +8,7 @@ from Tkinter import *
 import ttk
 import json
 import linecache
+import matplotlib.pyplot as plt
 
 # Set decoding for getting rid of €-sign
 reload(sys)
@@ -417,7 +418,8 @@ def Analyse_realistic_profit(session, aktueller_spieltag, spieler_dict):
     alter = spieler_dict['Alter']
     staerke = spieler_dict['Staerke']
     theoretischer_gewinn = spieler_dict['Theoretischer_gewinn']
-    marktwert = spieler_dict['Marktwert']
+    marktwert_buy = spieler_dict['Marktwert_buy']
+    marktwert_sell = spieler_dict['Marktwert_sell']
     file = open(file_name, 'a')
     print("--------BUY-------")
     file.write("--------BUY-------\n")
@@ -432,7 +434,8 @@ def Analyse_realistic_profit(session, aktueller_spieltag, spieler_dict):
         "Alter": alter,
         "Staerke": staerke,
         "Theoretischer_gewinn": theoretischer_gewinn,
-        "Marktwert": marktwert,
+        "Marktwert_buy": marktwert_buy,
+        "Marktwert_sell": marktwert_sell,
         "Transfersumme_average_buy": transfersumme_average_buy,
         "Transfersumme_average_sell": transfersumme_average_sell,
         "Realistischer_gewinn": real_profit
@@ -522,14 +525,28 @@ def Read_transfers_from_file():
         spieler = linecache.getline(file_name, i)
         spieler_dict = json.loads(spieler)
         profitable_transfers.append(spieler_dict)
-        # print(spieler_as_list)
     return profitable_transfers
 
+def Plot_results(aktueller_spieltag):
+    aktuelle_spieltags_liste = range(0, aktueller_spieltag + 1)
+    file = open(file_name, 'r')
+    spieler_typen = file.readlines()
+    spieler_typen = spieler_typen[-marktwertAnalyse.top_n_transfers:]
+    print("Reading file for plotting")
+    for s in spieler_typen:
+        s = json.loads(s)
+        print(s['Realistischer_gewinn'])
+    file.close()
+    '''
+    plt.plot(aktuelle_spieltags_liste, aktuelle_spieltags_liste, 'b-', label='label here')
+    plt.plot(aktuelle_spieltags_liste, aktuelle_spieltags_liste, 'r-', label='label here')
+    plt.show()
+    '''
 
 def main():
     # Get player data from transfermarkt
     # Set values for your search in marktwertAnalyse.
-    profitable_transfers = []
+    # profitable_transfers = []
     if Is_same_input():
         profitable_transfers = Read_transfers_from_file()
         for p in profitable_transfers:
@@ -548,11 +565,17 @@ def main():
     for p in profitable_transfers:
         spieler = Analyse_realistic_profit(session, aktueller_spieltag, p)
         spieler_dicts.append(spieler)
-    spieler_dicts = sorted(spieler_dicts, key=lambda k: k['Realistischer_gewinn'])
+    file = open(file_name, 'a')
     print("Profitablesten Spieler-Typen für Input")
-    # spieler_dicts.reverse()
+    file.write("Profitablesten Spieler-Typen für Input\n")
+    spieler_dicts = sorted(spieler_dicts, key=lambda k: k['Realistischer_gewinn'])
+    spieler_dicts.reverse()
     for s in spieler_dicts:
         print(s)
+        spieler_json = json.dumps(s, ensure_ascii=False)
+        file.write(spieler_json + "\n")
+    file.close()
+    Plot_results(aktueller_spieltag)
     # Search_in_Transfermarkt(profitable_transfers)
 
 

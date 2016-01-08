@@ -184,7 +184,8 @@ def Calculate_profit_per_player(marktwert_matrix):
                                 "Alter": alter,
                                 "Staerke": staerke,
                                 "Theoretischer_gewinn": gewinn,
-                                "Marktwert": einkaufspreis
+                                "Marktwert_buy": einkaufspreis,
+                                "Marktwert_sell": verkaufspreis
                             }
                             # player = [pos, alter, staerke, gewinn, einkaufspreis]
                             spieler_mit_gewinn.append(player2)
