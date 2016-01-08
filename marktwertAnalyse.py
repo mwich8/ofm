@@ -179,23 +179,32 @@ def Calculate_profit_per_player(marktwert_matrix):
                     gewinn = gewinn - Ausgaben_pro_spieler(staerke, anz_saison)
                     if (gewinn > 0):
                         if (einkaufspreis <= budget):
-                            player = [pos, alter, staerke, gewinn, einkaufspreis]
-                            spieler_mit_gewinn.append(player)
+                            player2 = {
+                                "Pos": pos,
+                                "Alter": alter,
+                                "Staerke": staerke,
+                                "Theoretischer_gewinn": gewinn,
+                                "Marktwert": einkaufspreis
+                            }
+                            # player = [pos, alter, staerke, gewinn, einkaufspreis]
+                            spieler_mit_gewinn.append(player2)
     return spieler_mit_gewinn
 
 def Add_top_transfers(spieler_mit_gewinn, all_top_transfers):
     "Adds the top transfers per position to the global profit player list"
     # Top Transfers
-    spieler_mit_gewinn.sort(lambda x, y: cmp(y[3], x[3]))
+    # spieler_mit_gewinn.sort(lambda x, y: cmp(y[3], x[3]))
+    spieler_mit_gewinn = sorted(spieler_mit_gewinn, key=lambda k: k['Theoretischer_gewinn'])
     # Add first top_n_transfers to a new list
-    for x in range(0, min(top_n_transfers, len(spieler_mit_gewinn))):
+    for x in range(len(spieler_mit_gewinn)-top_n_transfers,len(spieler_mit_gewinn)):
         all_top_transfers.append(spieler_mit_gewinn[x])
 
 def Calculate_overall_top_transfers(all_top_transfers, all_top_transfers_sorted):
     # Sort all top transfers in all selected positions
-    all_top_transfers.sort(lambda x, y: cmp(y[3], x[3]))
+    # all_top_transfers.sort(lambda x, y: cmp(y[3], x[3]))
+    all_top_transfers = sorted(all_top_transfers, key=lambda k: k['Theoretischer_gewinn'])
     # Add first top_n_transfers to the sorted all_top_tranfers_list
-    for x in range(0, min(top_n_transfers, len(all_top_transfers))):
+    for x in range(len(all_top_transfers)-top_n_transfers,len(all_top_transfers)):
         all_top_transfers_sorted.append(all_top_transfers[x])
         # print(all_top_transfers[x])
     if (len(all_top_transfers_sorted) == 0):

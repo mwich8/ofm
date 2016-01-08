@@ -411,8 +411,13 @@ def Analyse_realistic_price(session, aktueller_spieltag, file, pos, alter, staer
         average_price = gesamt_spielerTyp_summe/gesamt_spielerTyp_anzahl
     return average_price
 
-def Analyse_realistic_profit(session, aktueller_spieltag, pos, alter, staerke, theoretischer_gewinn, marktwert):
+def Analyse_realistic_profit(session, aktueller_spieltag, spieler_dict):
     "Analyses the realstic profit per profit by scanning Spielerwechsel"
+    pos = spieler_dict['Pos']
+    alter = spieler_dict['Alter']
+    staerke = spieler_dict['Staerke']
+    theoretischer_gewinn = spieler_dict['Theoretischer_gewinn']
+    marktwert = spieler_dict['Marktwert']
     file = open(file_name, 'a')
     print("--------BUY-------")
     file.write("--------BUY-------\n")
@@ -454,10 +459,6 @@ def Input_to_dict():
     }
     return input_dict
 
-
-budget = 4000000
-
-top_n_transfers = 5
 
 def Write_Input_to_file(file):
     input_dict = Input_to_dict()
@@ -511,19 +512,16 @@ def Is_same_input():
 
 def Write_transfers_to_file(file, profitable_transfers):
     for transfer in profitable_transfers:
-        for data in transfer:
-            file.write(str(data) + " ")
-        file.write("\n")
+        transfer_json = json.dumps(transfer, ensure_ascii=False)
+        file.write(transfer_json + "\n")
     file.close()
 
 def Read_transfers_from_file():
     profitable_transfers = []
     for i in range(2, marktwertAnalyse.top_n_transfers + 2):
         spieler = linecache.getline(file_name, i)
-        spieler_as_list = str(spieler).split()
-        for j in range(1, len(spieler_as_list)):
-            spieler_as_list[j] = int(spieler_as_list[j])
-        profitable_transfers.append(spieler_as_list)
+        spieler_dict = json.loads(spieler)
+        profitable_transfers.append(spieler_dict)
         # print(spieler_as_list)
     return profitable_transfers
 
@@ -548,9 +546,11 @@ def main():
     spieler_dicts = []
     aktueller_spieltag = Get_aktuellen_spieltag(session)
     for p in profitable_transfers:
-        spieler = Analyse_realistic_profit(session, aktueller_spieltag, p[0], p[1], p[2], p[3], p[4])
+        spieler = Analyse_realistic_profit(session, aktueller_spieltag, p)
         spieler_dicts.append(spieler)
     spieler_dicts = sorted(spieler_dicts, key=lambda k: k['Realistischer_gewinn'])
+    print("Profitablesten Spieler-Typen für Input")
+    # spieler_dicts.reverse()
     for s in spieler_dicts:
         print(s)
     # Search_in_Transfermarkt(profitable_transfers)
