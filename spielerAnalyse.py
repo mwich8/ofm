@@ -189,7 +189,11 @@ def Get_bids(soup):
         bids.append(nobr.text)
     return bids
 
-def Fill_player_database(player_database, trs, player_IDs, bids):
+
+
+
+def Add_players_to_database(player_database, trs, player_IDs, bids):
+    # Adds all players found by the search to the database
     counter = 0
     for tr in trs:
         tableDatas = tr.findAll('td')
@@ -237,108 +241,29 @@ def Bid_on_player(session, player_ID):
     constructed_website = spieler_beobachten_website + str(player_ID)
     session.get(constructed_website)
 
+# def Change_transfermarkt_suche_data(player_typ):
 
-'''
-# Analyse Spielerwechsel
-# Navigate to spielerwechsel
-session = requests.Session()
-main_website_response = session.get(main_website)
-session.post(main_website, data=loginData, headers={"Referer": main_website})
-hidden_site_response = session.get(hidden_website)
-spielerwechsel_website_response = session.post(spielerwechsel_website, data=spielerwechsel_data)
-soup = BeautifulSoup(spielerwechsel_website_response.content)
-
-# Fill database
-player_database = []
-tbody = soup.find('tbody')
-tableRows = tbody.findAll('tr')
-for tr in tableRows:
-    tableDatas = tr.findAll('td')
-    if(len(tableDatas) == 19):
-        # Fill Database with Pos, Alter, Staerke and Transfersumme
-        for i in range(0,4):
-            player_database.append(tableDatas[i+13].text)
-        # Insert dummy value for Marktwert and TransferUnterschied
-        player_database.append(-1)
-        player_database.append(-1)
-    if(len(tableDatas) == 20):
-        # Fill Database with Pos, Alter, Staerke and Transfersumme
-        for i in range(0,4):
-            player_database.append(tableDatas[i+14].text)
-        # Insert dummy value for Marktwert and TransferUnterschied
-        player_database.append(-1)
-        player_database.append(-1)
-
-
-# Set value for transfer, marktwert and difference
-elem = soup.findAll('a', {'href':re.compile('/player')})
-
-counter = 0
-for e in elem:
-    # Get TransferValue and parse it to int
-    tS = player_database[counter*6 + 3]
-    tS = tS.replace(".","")
-    tS = tS.replace(" ","")
-    tS = int(tS.replace("€",""))
-    player_database[counter*6 + 3] = tS
-    # player_database[counter*6 + 3] = "TS: " + str(tS)
-    # Get MarktwertValue and parse it to int
-    spieler_profil = session.get(main_website + e['href'])
-    spieler_profil_soup = BeautifulSoup(spieler_profil.content)
-    sP_div = spieler_profil_soup.find('div', {'id':"details_einfach"})
-    sP_table = sP_div.findAll('table')[1]
-    sP_marktwert_tr = sP_table.findAll('tr')[5]
-    sP_marktwert_td = sP_marktwert_tr.findAll('td')[1]
-    mW = sP_marktwert_td.text
-    mW = mW.replace(".","")
-    mW = mW.replace(" ","")
-    mW = int(mW.replace("€",""))
-    player_database[counter*6 + 4] = mW
-    # player_database[counter*6 + 4] = "MW: " + str(mW)
-    marktwert_difference = mW -tS
-    player_database[counter*6 + 5] = marktwert_difference
-    # player_database[counter*6 + 5] = "Gewinn: " + str(marktwert_difference)
-    counter = counter + 1
-
-# Make output readable and print it
-for x in range(0,len(player_database)):
-    preString = ""
-    if ((x % 6) == 0):
-        preString = "POS: "
-    elif ((x % 6) == 1):
-        preString = "Alter: "
-    elif ((x % 6) == 2):
-        preString = "Stärke: "
-    elif ((x % 6) == 3):
-        preString = "TS: "
-    elif ((x % 6) == 4):
-        preString = "MW: "
-    elif ((x % 6) == 5):
-        preString = "KäuferGewinn: "
-    player_database[x] = preString + str(player_database[x])
-    print(player_database[x])
-'''
-
-
-# print ("Spielberechnung" in r2.text | "OFM" in r2.text)
 
 def Search_in_Transfermarkt(profitable_transfers):
     player_database = []
     suchpos_prestring = "suchpos"
     for p in profitable_transfers:
-        # print(p)
+        # Deselect all positions
         for pos in range(0, len(transfermarkt_suchpositionen)):
             suchpos = suchpos_prestring + str(pos)
             transfermarkt_suche[suchpos] = 0
-        suchpos_index = transfermarkt_suchpositionen.index(p[0])
+        # Set position for search
+        suchpos_index = transfermarkt_suchpositionen.index(p['Pos'])
         suchpos = suchpos_prestring + str(suchpos_index)
-        transfermarkt_suche[suchpos] = suchpos_index
-        min_alter = max_alter = p[1]
+        # Calc properties for search
+        min_alter = max_alter = p['Alter']
         alter_range = str(str(min_alter)+";"+str(max_alter))
         budget = marktwertAnalyse.budget
-        min_staerke = max_starke = p[2]
+        min_staerke = max_starke = p['Staerke']
         staerke_range = str(str(min_staerke)+";"+str(max_starke))
-        rel_mw_abstand = -30
+        rel_mw_abstand = 0
+        # Set all other properties for search
+        transfermarkt_suche[suchpos] = suchpos_index
         transfermarkt_suche['alt_von'] = min_alter
         transfermarkt_suche['alt_bis'] = max_alter
         transfermarkt_suche['age'] = alter_range
@@ -347,17 +272,20 @@ def Search_in_Transfermarkt(profitable_transfers):
         transfermarkt_suche['staerke_bis'] = max_starke
         transfermarkt_suche['strength'] = staerke_range
         transfermarkt_suche['rel_mw_abstand'] = rel_mw_abstand
+        # Executes the search with updated data
         session = requests.Session()
         soup = Navigate_to_website(session, main_website, loginData, transfermarkt_website, transfermarkt_suche)
         trs = Get_player_trs(soup)
         player_IDs = Get_player_IDs(trs)
         bids = Get_bids(soup)
-        Fill_player_database(player_database,trs,player_IDs,bids)
-    player_database = sorted(player_database, key=lambda k: k['AWP'])
+        Add_players_to_database(player_database,trs,player_IDs,bids)
+    player_database = sorted(player_database, key=lambda k: k['Erfahrungspunkte'])
+    player_database.reverse()
     for player in player_database:
         print(player)
-    for i in range(len(player_database)-5, len(player_database)):
-        Bid_on_player(session, player_database[i]['ID'])
+    for i in range(0, min(marktwertAnalyse.top_n_transfers, len(player_database))):
+        print("Bidding on player " + str(player_database[i]['ID']))
+        # Bid_on_player(session, player_database[i]['ID'])
 
 def Change_spielerwechsel_data(pos, alter, staerke):
     pos_index = transfermarkt_suchpositionen.index(pos)
@@ -589,65 +517,17 @@ def Spieltag_already_analysed(aktueller_spieltag):
     else:
         return True
 
-def main():
-    # Get player data from transfermarkt
-    # Set values for your search in marktwertAnalyse.
-    # profitable_transfers = []
-    if Is_same_input():
-        profitable_transfers = Read_transfers_from_file()
-        for p in profitable_transfers:
-            print(p)
-    else:
-        profitable_transfers = marktwertAnalyse.Calculate_top_n_transfers()
-    # profitable_transfers = marktwertAnalyse.Calculate_top_n_transfers()
-    session = requests.Session()
-    session.post(main_website, data=loginData, headers={"Referer": main_website})
-    spieler_dicts = []
-    aktueller_spieltag = Get_aktuellen_spieltag(session)
-    if (Spieltag_already_analysed(aktueller_spieltag)):
-        file = open(file_name, 'r')
-        spieler_typen = file.readlines()
-        file.close()
-        spieler_typen = spieler_typen[-marktwertAnalyse.top_n_transfers:]
-        for spieler_typ in spieler_typen:
-            spieler_typ_json = json.loads(spieler_typ)
-            spieler_dicts.append(spieler_typ_json)
-    else:
-        for p in profitable_transfers:
-            spieler = Analyse_realistic_profit(session, aktueller_spieltag, p)
-            spieler_dicts.append(spieler)
-        spieler_dicts = sorted(spieler_dicts, key=lambda k: k['Realistischer_gewinn'])
-        spieler_dicts.reverse()
-    # Delete current analysis
-    file = open(file_name, 'w')
-    Write_Input_to_file(file, aktueller_spieltag)
-    Write_transfers_to_file(file, profitable_transfers)
-    file = open(file_name, 'a')
-    print("Profitablesten Spieler-Typen für Input")
-    file.write("Profitablesten Spieler-Typen für Input\n")
-    for s in spieler_dicts:
-        print(s)
-        spieler_json = json.dumps(s, ensure_ascii=False)
-        file.write(spieler_json + "\n")
-    file.close()
-    Plot_results(aktueller_spieltag)
-    # Search_in_Transfermarkt(profitable_transfers)
-
-
-
-# TODO: MAKE A GUI
-
-def calculate(*args):
+def Set_input_values(budget_per_player, min_strength, max_strength, min_age, max_age, top_n_transfers, anz_saisons, anz_turniere_pro_saison, anz_trainingslager_pro_saison):
     try:
         marktwertAnalyse.budget = budget_per_player
-        marktwertAnalyse.min_staerke = min_strength.get()
-        marktwertAnalyse.max_staerke = max_strength.get()
-        marktwertAnalyse.min_alter = min_age.get()
-        marktwertAnalyse.max_alter = max_age.get()
-        marktwertAnalyse.top_n_transfers = top_n_transfers.get()
-        marktwertAnalyse.anz_saison = anz_saisons.get()
-        marktwertAnalyse.anzahl_tuniere_pro_saison = anz_turniere_pro_saison.get()
-        marktwertAnalyse.anzahl_trainingslager_pro_saison = anz_trainingslager_pro_saison.get()
+        marktwertAnalyse.min_staerke = min_strength
+        marktwertAnalyse.max_staerke = max_strength
+        marktwertAnalyse.min_alter = min_age
+        marktwertAnalyse.max_alter = max_age
+        marktwertAnalyse.top_n_transfers = top_n_transfers
+        marktwertAnalyse.anz_saison = anz_saisons
+        marktwertAnalyse.anzahl_tuniere_pro_saison = anz_turniere_pro_saison
+        marktwertAnalyse.anzahl_trainingslager_pro_saison = anz_trainingslager_pro_saison
         main()
         # value = float(budget_per_player)
         # current_status = status["text"] + "Help!"
@@ -656,98 +536,164 @@ def calculate(*args):
     except ValueError:
         pass
 
-root = Tk()
-root.title("Which player to buy?")
+def Create_GUI():
+    root = Tk()
+    root.title("Which player to buy?")
 
-mainframe = ttk.Frame(root, padding="3 3 12 12")
-mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-mainframe.columnconfigure(0, weight=1)
-mainframe.rowconfigure(0, weight=1)
+    mainframe = ttk.Frame(root, padding="3 3 12 12")
+    mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+    mainframe.columnconfigure(0, weight=1)
+    mainframe.rowconfigure(0, weight=1)
 
-budget_per_player = IntVar()
-text = Text(root)
-min_strength = IntVar()
-max_strength = IntVar()
+    budget_per_player = IntVar()
+    text = Text(root)
+    min_strength = IntVar()
+    max_strength = IntVar()
 
-min_age = IntVar()
-max_age = IntVar()
+    min_age = IntVar()
+    max_age = IntVar()
 
-top_n_transfers = IntVar()
-anz_saisons = IntVar()
+    top_n_transfers = IntVar()
+    anz_saisons = IntVar()
 
-anz_turniere_pro_saison = IntVar()
-anz_trainingslager_pro_saison = IntVar()
+    anz_turniere_pro_saison = IntVar()
+    anz_trainingslager_pro_saison = IntVar()
 
-# Setup
-min_strength_slider = Scale(mainframe, variable = min_strength, from_=1, to=27, orient=HORIZONTAL)
-max_strength_slider = Scale(mainframe, variable = max_strength, from_=1, to=27, orient=HORIZONTAL)
+    # Setup
+    min_strength_slider = Scale(mainframe, variable = min_strength, from_=1, to=27, orient=HORIZONTAL)
+    max_strength_slider = Scale(mainframe, variable = max_strength, from_=1, to=27, orient=HORIZONTAL)
 
-min_age_slider = Scale(mainframe, variable = min_age, from_=17, to=36, orient=HORIZONTAL)
-max_age_slider = Scale(mainframe, variable = max_age, from_=17, to=36, orient=HORIZONTAL)
+    min_age_slider = Scale(mainframe, variable = min_age, from_=17, to=36, orient=HORIZONTAL)
+    max_age_slider = Scale(mainframe, variable = max_age, from_=17, to=36, orient=HORIZONTAL)
 
-top_n_transfers_slider = Scale(mainframe, variable = top_n_transfers, from_=3, to=20, orient=HORIZONTAL)
-anz_saisons_slider = Scale(mainframe, variable = anz_saisons, from_=1, to=2, orient=HORIZONTAL)
+    top_n_transfers_slider = Scale(mainframe, variable = top_n_transfers, from_=3, to=20, orient=HORIZONTAL)
+    anz_saisons_slider = Scale(mainframe, variable = anz_saisons, from_=1, to=2, orient=HORIZONTAL)
 
-anz_turniere_pro_saison_slider = Scale(mainframe, variable = anz_turniere_pro_saison, from_=0, to=4, orient=HORIZONTAL)
-anz_trainingslager_pro_saison_slider = Scale(mainframe, variable = anz_trainingslager_pro_saison, from_=0, to=4, orient=HORIZONTAL)
+    anz_turniere_pro_saison_slider = Scale(mainframe, variable = anz_turniere_pro_saison, from_=0, to=4, orient=HORIZONTAL)
+    anz_trainingslager_pro_saison_slider = Scale(mainframe, variable = anz_trainingslager_pro_saison, from_=0, to=4, orient=HORIZONTAL)
 
-status = ttk.Label(mainframe, text="")
-status.grid(row=7, columnspan=3, sticky=S)
+    status = ttk.Label(mainframe, text="")
+    status.grid(row=7, columnspan=3, sticky=S)
 
-# Set default values
-budget_per_player = marktwertAnalyse.budget
+    # Set default values
+    budget_per_player = marktwertAnalyse.budget
 
-min_strength_slider.set(marktwertAnalyse.min_staerke)
-max_strength_slider.set(marktwertAnalyse.max_staerke)
+    min_strength_slider.set(marktwertAnalyse.min_staerke)
+    max_strength_slider.set(marktwertAnalyse.max_staerke)
 
-min_age_slider.set(marktwertAnalyse.min_alter)
-max_age_slider.set(marktwertAnalyse.max_alter)
+    min_age_slider.set(marktwertAnalyse.min_alter)
+    max_age_slider.set(marktwertAnalyse.max_alter)
 
-top_n_transfers_slider.set(marktwertAnalyse.top_n_transfers)
-anz_saisons_slider.set(marktwertAnalyse.anz_saison)
+    top_n_transfers_slider.set(marktwertAnalyse.top_n_transfers)
+    anz_saisons_slider.set(marktwertAnalyse.anz_saison)
 
-anz_turniere_pro_saison_slider.set(marktwertAnalyse.anzahl_tuniere_pro_saison)
-anz_trainingslager_pro_saison_slider.set(marktwertAnalyse.anzahl_trainingslager_pro_saison)
+    anz_turniere_pro_saison_slider.set(marktwertAnalyse.anzahl_tuniere_pro_saison)
+    anz_trainingslager_pro_saison_slider.set(marktwertAnalyse.anzahl_trainingslager_pro_saison)
 
-# Row 1
-budget_entry = ttk.Entry(mainframe, width=12, textvariable=budget_per_player, justify=RIGHT)
-budget_entry.insert(END, marktwertAnalyse.budget)
-ttk.Label(mainframe, text="Budget per player").grid(column=2, row=1, sticky=E)
-budget_entry.grid(column=3, row=1, sticky=(W, E))
-ttk.Label(mainframe, text="€").grid(column=4, row=1, sticky=W)
+    # Row 1
+    budget_entry = ttk.Entry(mainframe, width=12, textvariable=budget_per_player, justify=RIGHT)
+    budget_entry.insert(END, marktwertAnalyse.budget)
+    ttk.Label(mainframe, text="Budget per player").grid(column=2, row=1, sticky=E)
+    budget_entry.grid(column=3, row=1, sticky=(W, E))
+    ttk.Label(mainframe, text="€").grid(column=4, row=1, sticky=W)
 
-# Row 2
-ttk.Label(mainframe, text="Min. Stärke").grid(column=1, row=2, sticky=(S,E))
-min_strength_slider.grid(column=2, row=2, sticky=W)
-ttk.Label(mainframe, text="Max. Stärke").grid(column=3, row=2, sticky=(S,E))
-max_strength_slider.grid(column=4, row=2, sticky=W)
+    # Row 2
+    ttk.Label(mainframe, text="Min. Stärke").grid(column=1, row=2, sticky=(S,E))
+    min_strength_slider.grid(column=2, row=2, sticky=W)
+    ttk.Label(mainframe, text="Max. Stärke").grid(column=3, row=2, sticky=(S,E))
+    max_strength_slider.grid(column=4, row=2, sticky=W)
 
-# Row 3
-ttk.Label(mainframe, text="Min. Alter").grid(column=1, row=3, sticky=(S,E))
-min_age_slider.grid(column=2, row=3, sticky=W)
-ttk.Label(mainframe, text="Max. Alter").grid(column=3, row=3, sticky=(S,E))
-max_age_slider.grid(column=4, row=3, sticky=W)
+    # Row 3
+    ttk.Label(mainframe, text="Min. Alter").grid(column=1, row=3, sticky=(S,E))
+    min_age_slider.grid(column=2, row=3, sticky=W)
+    ttk.Label(mainframe, text="Max. Alter").grid(column=3, row=3, sticky=(S,E))
+    max_age_slider.grid(column=4, row=3, sticky=W)
 
-# Row 4
-ttk.Label(mainframe, text="Top n Transfers").grid(column=1, row=4, sticky=(S,E))
-top_n_transfers_slider.grid(column=2, row=4, sticky=W)
-ttk.Label(mainframe, text="Anz. Saisons").grid(column=3, row=4, sticky=(S,E))
-anz_saisons_slider.grid(column=4, row=4, sticky=W)
+    # Row 4
+    ttk.Label(mainframe, text="Top n Transfers").grid(column=1, row=4, sticky=(S,E))
+    top_n_transfers_slider.grid(column=2, row=4, sticky=W)
+    ttk.Label(mainframe, text="Anz. Saisons").grid(column=3, row=4, sticky=(S,E))
+    anz_saisons_slider.grid(column=4, row=4, sticky=W)
 
-# Row 5
-ttk.Label(mainframe, text="Turniere pro Saison").grid(column=1, row=5, sticky=(S,E))
-anz_turniere_pro_saison_slider.grid(column=2, row=5, sticky=W)
-ttk.Label(mainframe, text="Trainingslager pro Saison").grid(column=3, row=5, sticky=(S,E))
-anz_trainingslager_pro_saison_slider.grid(column=4, row=5, sticky=W)
+    # Row 5
+    ttk.Label(mainframe, text="Turniere pro Saison").grid(column=1, row=5, sticky=(S,E))
+    anz_turniere_pro_saison_slider.grid(column=2, row=5, sticky=W)
+    ttk.Label(mainframe, text="Trainingslager pro Saison").grid(column=3, row=5, sticky=(S,E))
+    anz_trainingslager_pro_saison_slider.grid(column=4, row=5, sticky=W)
 
-# Row 6
-ttk.Button(mainframe, text="Calculate players in budget", command=calculate).grid(column=2, columnspan=2, row=6, sticky=S)
+    # Row 6
+    ttk.Button(mainframe, text="Calculate players in budget", command= lambda: Set_input_values(budget_per_player, min_strength.get(), max_strength.get(), min_age.get(), max_age.get(), top_n_transfers.get(), anz_saisons.get(), anz_turniere_pro_saison.get(), anz_trainingslager_pro_saison.get())).grid(column=2, columnspan=2, row=6, sticky=S)
 
-budget_entry.focus()
-root.bind('<Return>', calculate)
+    budget_entry.focus()
+    # root.bind('<Return>', calculate)
 
-root.mainloop()
+    root.mainloop()
+
+def Get_profitable_transfers(is_same_input):
+    profitable_transfers = []
+    if is_same_input:
+        profitable_transfers = Read_transfers_from_file()
+        for p in profitable_transfers:
+            print(p)
+    else:
+        profitable_transfers = marktwertAnalyse.Calculate_top_n_transfers()
+    return profitable_transfers
+
+def Calculate_real_profits(profitable_transfers, session, aktueller_spieltag, is_same_input):
+    players_with_real_profit = []
+    if (Spieltag_already_analysed(aktueller_spieltag) and is_same_input):
+        file = open(file_name, 'r')
+        spieler_typen = file.readlines()
+        file.close()
+        spieler_typen = spieler_typen[-marktwertAnalyse.top_n_transfers:]
+        for spieler_typ in spieler_typen:
+            spieler_typ_json = json.loads(spieler_typ)
+            players_with_real_profit.append(spieler_typ_json)
+    else:
+        for p in profitable_transfers:
+            spieler = Analyse_realistic_profit(session, aktueller_spieltag, p)
+            players_with_real_profit.append(spieler)
+        players_with_real_profit = sorted(players_with_real_profit, key=lambda k: k['Realistischer_gewinn'])
+        players_with_real_profit.reverse()
+    return players_with_real_profit
+
+def Write_results_to_file(aktueller_spieltag, profitable_transfers, players_with_real_profit):
+    # Delete current analysis
+    file = open(file_name, 'w')
+    Write_Input_to_file(file, aktueller_spieltag)
+    Write_transfers_to_file(file, profitable_transfers)
+    file = open(file_name, 'a')
+    print("Profitablesten Spieler-Typen für eingegebenen Input")
+    file.write("Profitablesten Spieler-Typen für eingegebenen Input\n")
+    for s in players_with_real_profit:
+        print(s)
+        spieler_json = json.dumps(s, ensure_ascii=False)
+        file.write(spieler_json + "\n")
+    file.close()
+
+def main():
+    # Get player data from transfermarkt
+    # Set values for your search in marktwertAnalyse.
+    is_same_input = Is_same_input()
+    profitable_transfers = Get_profitable_transfers(is_same_input)
+    session = requests.Session()
+    session.post(main_website, data=loginData, headers={"Referer": main_website})
+    session = requests.Session()
+    session.post(main_website, data=loginData, headers={"Referer": main_website})
+    aktueller_spieltag = Get_aktuellen_spieltag(session)
+    players_with_real_profit = Calculate_real_profits(profitable_transfers, session, aktueller_spieltag, is_same_input)
+    Write_results_to_file(aktueller_spieltag, profitable_transfers, players_with_real_profit)
+    # Plot_results(aktueller_spieltag)
+    Search_in_Transfermarkt(profitable_transfers)
 
 
 
-# main()
+# TODO: MAKE A GUI
+
+
+# Create_GUI()
+
+
+
+
+main()
