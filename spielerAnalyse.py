@@ -9,6 +9,7 @@ import ttk
 import json
 import linecache
 import matplotlib.pyplot as plt
+import math
 
 # Set decoding for getting rid of €-sign
 reload(sys)
@@ -373,7 +374,7 @@ def Get_aktuellen_spieltag(session):
     aktueller_spieltag = int(re.findall('\d+', str(p_tag.text))[0])
     return aktueller_spieltag
 
-def Analyse_realistic_price(session, aktueller_spieltag, file, pos, alter, staerke):
+def Analyse_realistic_price(session, average_transfersummen, aktueller_spieltag, file, pos, alter, staerke):
     Change_spielerwechsel_data(pos, alter, staerke)
     analysis_string = str("Analysing " + str(pos) + " " + str(alter) + " " + str(staerke))
     file.write(analysis_string + "\n")
@@ -404,6 +405,7 @@ def Analyse_realistic_price(session, aktueller_spieltag, file, pos, alter, staer
         else:
             file.write("0" + "\n")
             print("0")
+        average_transfersummen.append(average_price)
         gesamt_spielerTyp_summe += spieltag_summe
         gesamt_spielerTyp_anzahl += spieltag_spieler_anzahl
     if (gesamt_spielerTyp_anzahl > 0):
@@ -423,10 +425,12 @@ def Analyse_realistic_profit(session, aktueller_spieltag, spieler_dict):
     file = open(file_name, 'a')
     print("--------BUY-------")
     file.write("--------BUY-------\n")
-    transfersumme_average_buy = Analyse_realistic_price(session, aktueller_spieltag, file, pos, alter, staerke)
+    average_transfersummen_buy = []
+    transfersumme_average_buy = Analyse_realistic_price(session, average_transfersummen_buy, aktueller_spieltag, file, pos, alter, staerke)
     print("--------SELL-------")
     file.write("--------SELL-------\n")
-    transfersumme_average_sell = Analyse_realistic_price(session, aktueller_spieltag, file, pos, alter + marktwertAnalyse.anz_saison, staerke + marktwertAnalyse.anz_saison)
+    average_transfersummen_sell = []
+    transfersumme_average_sell = Analyse_realistic_price(session, average_transfersummen_sell, aktueller_spieltag, file, pos, alter + marktwertAnalyse.anz_saison, staerke + marktwertAnalyse.anz_saison)
     real_profit = transfersumme_average_sell - transfersumme_average_buy
     real_profit = real_profit - marktwertAnalyse.Ausgaben_pro_spieler(staerke, marktwertAnalyse.anz_saison)
     spieler = {
@@ -437,7 +441,9 @@ def Analyse_realistic_profit(session, aktueller_spieltag, spieler_dict):
         "Marktwert_buy": marktwert_buy,
         "Marktwert_sell": marktwert_sell,
         "Transfersumme_average_buy": transfersumme_average_buy,
+        "Spieltag_average_transfersummen_buy" : average_transfersummen_buy,
         "Transfersumme_average_sell": transfersumme_average_sell,
+        "Spieltag_average_transfersummen_sell" : average_transfersummen_sell,
         "Realistischer_gewinn": real_profit
     }
     spieler_json = json.dumps(spieler, ensure_ascii=False)
@@ -446,7 +452,7 @@ def Analyse_realistic_profit(session, aktueller_spieltag, spieler_dict):
     file.close()
     return spieler
 
-def Input_to_dict():
+def Input_to_dict(aktueller_spieltag):
     input_dict = {
         "Positions": marktwertAnalyse.positions,
         "Kadergroesse": marktwertAnalyse.kadergroesse,
@@ -458,13 +464,14 @@ def Input_to_dict():
         "Max_staerke": marktwertAnalyse.max_staerke,
         "Anz_saisons": marktwertAnalyse.anz_saison,
         "Budget": marktwertAnalyse.budget,
-        "Top_n_transfers": marktwertAnalyse.top_n_transfers
+        "Top_n_transfers": marktwertAnalyse.top_n_transfers,
+        "Aktueller_spieltag": aktueller_spieltag
     }
     return input_dict
 
 
-def Write_Input_to_file(file):
-    input_dict = Input_to_dict()
+def Write_Input_to_file(file, aktueller_spieltag):
+    input_dict = Input_to_dict(aktueller_spieltag)
     input_json = json.dumps(input_dict, ensure_ascii=False)
     file.write(input_json + "\n")
 
@@ -527,21 +534,60 @@ def Read_transfers_from_file():
         profitable_transfers.append(spieler_dict)
     return profitable_transfers
 
+def Calculate_x_dimension(number_of_players, plot_y_dimension):
+    x_dimension = plot_y_dimension
+    number_of_subplots = plot_y_dimension * x_dimension
+    while (number_of_subplots < number_of_players):
+        x_dimension += 1
+        number_of_subplots = plot_y_dimension * x_dimension
+    return x_dimension
+
 def Plot_results(aktueller_spieltag):
     aktuelle_spieltags_liste = range(0, aktueller_spieltag + 1)
+    # print(aktuelle_spieltags_liste)
     file = open(file_name, 'r')
     spieler_typen = file.readlines()
+    file.close()
     spieler_typen = spieler_typen[-marktwertAnalyse.top_n_transfers:]
-    print("Reading file for plotting")
+    number_of_players = len(spieler_typen)
+    plot_y_dimension = int(math.sqrt(number_of_players))
+    plot_x_dimension = Calculate_x_dimension(number_of_players, plot_y_dimension)
+    fig, axes = plt.subplots(nrows=plot_y_dimension, ncols=plot_x_dimension)
+    fig.tight_layout()
+    # print("Reading file for plotting")
+    counter = 1
     for s in spieler_typen:
         s = json.loads(s)
-        print(s['Realistischer_gewinn'])
-    file.close()
-    '''
-    plt.plot(aktuelle_spieltags_liste, aktuelle_spieltags_liste, 'b-', label='label here')
-    plt.plot(aktuelle_spieltags_liste, aktuelle_spieltags_liste, 'r-', label='label here')
+        title = str(s['Pos']) + " Staerke:" + str(s['Staerke'])+ " Alter:" + str(s['Alter'])
+        plt.subplot(plot_y_dimension, plot_x_dimension, counter)
+        plt.title(title)
+        plt.grid(True)
+        label = "Marktwert_buy"
+        marktwert_buy_list = [s[label]] * len(aktuelle_spieltags_liste)
+        # print(marktwert_buy_list)
+        plt.plot(aktuelle_spieltags_liste, marktwert_buy_list, 'bo-', label=label)
+        label = "Spieltag_average_transfersummen_buy"
+        plt.plot(aktuelle_spieltags_liste, s[label], 'bo--', label=label)
+        label = "Marktwert_sell"
+        marktwert_sell_list = [s[label]] * len(aktuelle_spieltags_liste)
+        # print(marktwert_sell_list)
+        plt.plot(aktuelle_spieltags_liste, marktwert_sell_list, 'ro-', label=label)
+        label = "Spieltag_average_transfersummen_sell"
+        plt.plot(aktuelle_spieltags_liste, s[label], 'ro--', label=label)
+        counter += 1
+        # print(s['Realistischer_gewinn'])
     plt.show()
-    '''
+
+def Spieltag_already_analysed(aktueller_spieltag):
+    file = open(file_name, 'r')
+    input_dict = file.readline()
+    file.close()
+    # print(input_dict)
+    input_json = json.loads(input_dict)
+    if(input_json["Aktueller_spieltag"] != aktueller_spieltag):
+        return False
+    else:
+        return True
 
 def main():
     # Get player data from transfermarkt
@@ -554,22 +600,31 @@ def main():
     else:
         profitable_transfers = marktwertAnalyse.Calculate_top_n_transfers()
     # profitable_transfers = marktwertAnalyse.Calculate_top_n_transfers()
-    file = open(file_name, 'w')
-    Write_Input_to_file(file)
-    Write_transfers_to_file(file, profitable_transfers)
     session = requests.Session()
     session.post(main_website, data=loginData, headers={"Referer": main_website})
-    # Delete current analysis
     spieler_dicts = []
     aktueller_spieltag = Get_aktuellen_spieltag(session)
-    for p in profitable_transfers:
-        spieler = Analyse_realistic_profit(session, aktueller_spieltag, p)
-        spieler_dicts.append(spieler)
+    if (Spieltag_already_analysed(aktueller_spieltag)):
+        file = open(file_name, 'r')
+        spieler_typen = file.readlines()
+        file.close()
+        spieler_typen = spieler_typen[-marktwertAnalyse.top_n_transfers:]
+        for spieler_typ in spieler_typen:
+            spieler_typ_json = json.loads(spieler_typ)
+            spieler_dicts.append(spieler_typ_json)
+    else:
+        for p in profitable_transfers:
+            spieler = Analyse_realistic_profit(session, aktueller_spieltag, p)
+            spieler_dicts.append(spieler)
+        spieler_dicts = sorted(spieler_dicts, key=lambda k: k['Realistischer_gewinn'])
+        spieler_dicts.reverse()
+    # Delete current analysis
+    file = open(file_name, 'w')
+    Write_Input_to_file(file, aktueller_spieltag)
+    Write_transfers_to_file(file, profitable_transfers)
     file = open(file_name, 'a')
     print("Profitablesten Spieler-Typen für Input")
     file.write("Profitablesten Spieler-Typen für Input\n")
-    spieler_dicts = sorted(spieler_dicts, key=lambda k: k['Realistischer_gewinn'])
-    spieler_dicts.reverse()
     for s in spieler_dicts:
         print(s)
         spieler_json = json.dumps(s, ensure_ascii=False)
@@ -579,14 +634,24 @@ def main():
     # Search_in_Transfermarkt(profitable_transfers)
 
 
-'''
+
 # TODO: MAKE A GUI
 
 def calculate(*args):
     try:
-        value = float(budget_per_player.get())
-        current_status = status["text"] + "Help!"
-        status["text"] = current_status
+        marktwertAnalyse.budget = budget_per_player
+        marktwertAnalyse.min_staerke = min_strength.get()
+        marktwertAnalyse.max_staerke = max_strength.get()
+        marktwertAnalyse.min_alter = min_age.get()
+        marktwertAnalyse.max_alter = max_age.get()
+        marktwertAnalyse.top_n_transfers = top_n_transfers.get()
+        marktwertAnalyse.anz_saison = anz_saisons.get()
+        marktwertAnalyse.anzahl_tuniere_pro_saison = anz_turniere_pro_saison.get()
+        marktwertAnalyse.anzahl_trainingslager_pro_saison = anz_trainingslager_pro_saison.get()
+        main()
+        # value = float(budget_per_player)
+        # current_status = status["text"] + "Help!"
+        # status["text"] = current_status
         # meters.set((0.3048 * value * 10000.0 + 0.5)/10000.0)
     except ValueError:
         pass
@@ -607,38 +672,82 @@ max_strength = IntVar()
 min_age = IntVar()
 max_age = IntVar()
 
-min_strength_slider = Scale( root, variable = min_strength, to=27, orient=HORIZONTAL)
-max_strength_slider = Scale( root, variable = max_strength, to=27, orient=HORIZONTAL)
+top_n_transfers = IntVar()
+anz_saisons = IntVar()
 
-min_age_slider = Scale( root, variable = min_age, to=36, orient=HORIZONTAL)
-max_age_slider = Scale( root, variable = max_age, to=36, orient=HORIZONTAL)
+anz_turniere_pro_saison = IntVar()
+anz_trainingslager_pro_saison = IntVar()
 
+# Setup
+min_strength_slider = Scale(mainframe, variable = min_strength, from_=1, to=27, orient=HORIZONTAL)
+max_strength_slider = Scale(mainframe, variable = max_strength, from_=1, to=27, orient=HORIZONTAL)
 
-budget_entry = ttk.Entry(mainframe, width=12, textvariable=budget_per_player)
-budget_entry.grid(column=2, row=1, sticky=(W, E))
+min_age_slider = Scale(mainframe, variable = min_age, from_=17, to=36, orient=HORIZONTAL)
+max_age_slider = Scale(mainframe, variable = max_age, from_=17, to=36, orient=HORIZONTAL)
+
+top_n_transfers_slider = Scale(mainframe, variable = top_n_transfers, from_=3, to=20, orient=HORIZONTAL)
+anz_saisons_slider = Scale(mainframe, variable = anz_saisons, from_=1, to=2, orient=HORIZONTAL)
+
+anz_turniere_pro_saison_slider = Scale(mainframe, variable = anz_turniere_pro_saison, from_=0, to=4, orient=HORIZONTAL)
+anz_trainingslager_pro_saison_slider = Scale(mainframe, variable = anz_trainingslager_pro_saison, from_=0, to=4, orient=HORIZONTAL)
 
 status = ttk.Label(mainframe, text="")
-status.grid(row=5, columnspan=3, sticky=S)
-ttk.Button(mainframe, text="Calculate players in budget", command=calculate).grid(column=2, row=2, sticky=S)
+status.grid(row=7, columnspan=3, sticky=S)
 
-ttk.Label(mainframe, text="Budget per player").grid(column=1, row=1, sticky=E)
-ttk.Label(mainframe, text="€").grid(column=3, row=1, sticky=W)
+# Set default values
+budget_per_player = marktwertAnalyse.budget
 
-ttk.Label(mainframe, text="Stärke").grid(column=1, row=3, sticky=W)
-min_strength_slider.grid(column=2, row=3, sticky=W)
-max_strength_slider.grid(column=3, row=3, sticky=W)
+min_strength_slider.set(marktwertAnalyse.min_staerke)
+max_strength_slider.set(marktwertAnalyse.max_staerke)
 
-ttk.Label(mainframe, text="Alter").grid(column=1, row=4, sticky=W)
-min_age_slider.grid(column=2, row=4, sticky=W)
-max_age_slider.grid(column=3, row=4, sticky=W)
+min_age_slider.set(marktwertAnalyse.min_alter)
+max_age_slider.set(marktwertAnalyse.max_alter)
 
-for child in mainframe.winfo_children(): child.grid_configure(padx=5, pady=5)
+top_n_transfers_slider.set(marktwertAnalyse.top_n_transfers)
+anz_saisons_slider.set(marktwertAnalyse.anz_saison)
+
+anz_turniere_pro_saison_slider.set(marktwertAnalyse.anzahl_tuniere_pro_saison)
+anz_trainingslager_pro_saison_slider.set(marktwertAnalyse.anzahl_trainingslager_pro_saison)
+
+# Row 1
+budget_entry = ttk.Entry(mainframe, width=12, textvariable=budget_per_player, justify=RIGHT)
+budget_entry.insert(END, marktwertAnalyse.budget)
+ttk.Label(mainframe, text="Budget per player").grid(column=2, row=1, sticky=E)
+budget_entry.grid(column=3, row=1, sticky=(W, E))
+ttk.Label(mainframe, text="€").grid(column=4, row=1, sticky=W)
+
+# Row 2
+ttk.Label(mainframe, text="Min. Stärke").grid(column=1, row=2, sticky=(S,E))
+min_strength_slider.grid(column=2, row=2, sticky=W)
+ttk.Label(mainframe, text="Max. Stärke").grid(column=3, row=2, sticky=(S,E))
+max_strength_slider.grid(column=4, row=2, sticky=W)
+
+# Row 3
+ttk.Label(mainframe, text="Min. Alter").grid(column=1, row=3, sticky=(S,E))
+min_age_slider.grid(column=2, row=3, sticky=W)
+ttk.Label(mainframe, text="Max. Alter").grid(column=3, row=3, sticky=(S,E))
+max_age_slider.grid(column=4, row=3, sticky=W)
+
+# Row 4
+ttk.Label(mainframe, text="Top n Transfers").grid(column=1, row=4, sticky=(S,E))
+top_n_transfers_slider.grid(column=2, row=4, sticky=W)
+ttk.Label(mainframe, text="Anz. Saisons").grid(column=3, row=4, sticky=(S,E))
+anz_saisons_slider.grid(column=4, row=4, sticky=W)
+
+# Row 5
+ttk.Label(mainframe, text="Turniere pro Saison").grid(column=1, row=5, sticky=(S,E))
+anz_turniere_pro_saison_slider.grid(column=2, row=5, sticky=W)
+ttk.Label(mainframe, text="Trainingslager pro Saison").grid(column=3, row=5, sticky=(S,E))
+anz_trainingslager_pro_saison_slider.grid(column=4, row=5, sticky=W)
+
+# Row 6
+ttk.Button(mainframe, text="Calculate players in budget", command=calculate).grid(column=2, columnspan=2, row=6, sticky=S)
 
 budget_entry.focus()
 root.bind('<Return>', calculate)
 
 root.mainloop()
-'''
 
 
-main()
+
+# main()

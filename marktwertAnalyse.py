@@ -66,20 +66,21 @@ anzahl_trainingslager_pro_saison = 4
 # Adjust age
 min_alter = 17
 max_alter = 28
-alter_range = max_alter-min_alter+1
 
 # Bisher nur Stärke 0-19, danach nicht mehr profitable
 # Adjust strength
 min_staerke = 3
 max_staerke = 8
-staerke_range = max_staerke-min_staerke+1
 
 anz_saison = 1
 
 budget = 4000000
 
-top_n_transfers = 5
+top_n_transfers = 10
 # TODO: Change to here
+
+alter_range = max_alter-min_alter+1
+staerke_range = max_staerke-min_staerke+1
 
 kosten_tunier = 375000
 kosten_tunier_pro_spieler = 15000
