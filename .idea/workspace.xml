@@ -36,8 +36,8 @@
       <file leaf-file-name="spielerAnalyse.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/spielerAnalyse.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.8156626">
-              <caret line="696" column="14" selection-start-line="696" selection-start-column="14" selection-end-line="696" selection-end-column="14" />
+            <state vertical-scroll-proportion="0.61084336">
+              <caret line="738" column="4" selection-start-line="738" selection-start-column="4" selection-end-line="738" selection-end-column="4" />
               <folding>
                 <element signature="e#17#27#0" expanded="true" />
               </folding>
@@ -420,6 +420,46 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/marktwertAnalyse.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="246" column="2" selection-start-line="246" selection-start-column="2" selection-end-line="246" selection-end-column="2" />
+          <folding>
+            <element signature="e#17#27#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/spielerAnalyse.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#17#27#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/marktwertAnalyse.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="246" column="2" selection-start-line="246" selection-start-column="2" selection-end-line="246" selection-end-column="2" />
+          <folding>
+            <element signature="e#17#27#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/spielerAnalyse.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#17#27#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/marktwertAnalyse.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -882,8 +922,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/spielerAnalyse.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.8156626">
-          <caret line="696" column="14" selection-start-line="696" selection-start-column="14" selection-end-line="696" selection-end-column="14" />
+        <state vertical-scroll-proportion="0.61084336">
+          <caret line="738" column="4" selection-start-line="738" selection-start-column="4" selection-end-line="738" selection-end-column="4" />
           <folding>
             <element signature="e#17#27#0" expanded="true" />
           </folding>

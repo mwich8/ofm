@@ -1,15 +1,16 @@
 # encoding=utf8
 
 import sys
-import requests
-from BeautifulSoup import BeautifulSoup, SoupStrainer
-import marktwertAnalyse
-from Tkinter import *
-import ttk
-import json
-import linecache
-import matplotlib.pyplot as plt
-import math
+import requests                                                 # Sessions etc.
+from BeautifulSoup import BeautifulSoup                         # Analyse http
+import marktwertAnalyse                                         # Get all prestes
+from Tkinter import *                                           # GUI
+import ttk                                                      # GUI
+import json                                                     # encode/decode dicts to json
+import linecache                                                # reading files
+import matplotlib.pyplot as plt                                 # plotting
+import math                                                     # plotting
+from bs4 import BeautifulSoup as BS
 
 # Set decoding for getting rid of €-sign
 reload(sys)
@@ -141,14 +142,19 @@ transfermarkt_website = "http://v7.www.onlinefussballmanager.de/010_transfer/tra
 spielerwechsel_website = "http://v7.www.onlinefussballmanager.de/transfer/spielerwechsel.php"
 spieler_mitbieten_website = "http://v7.www.onlinefussballmanager.de/010_transfer/transfermarkt.php?aktion=mitbieten&spielerid="
 spieler_beobachten_website = "http://v7.www.onlinefussballmanager.de/010_transfer/beobachten.request.php?spielerid="
+team_website = "http://v7.www.onlinefussballmanager.de/team/players.php"
 
-
+forcing_reload = False
 
 # Analyse Transfermarkt
 # Navigate to transfermarkt
-def Navigate_to_website(session, login_website, login_data, dest_website, dest_data):
+def Navigate_to_website_with_login(session, login_website, login_data, dest_website, dest_data):
     login_website_response = session.get(login_website)
     session.post(login_website, data=login_data, headers={"Referer": login_website})
+    dest_website_response = session.post(dest_website,data=dest_data)
+    return BeautifulSoup(dest_website_response.content)
+
+def Navigate_to_website_simple(session, dest_website, dest_data):
     dest_website_response = session.post(dest_website,data=dest_data)
     return BeautifulSoup(dest_website_response.content)
 
@@ -188,8 +194,6 @@ def Get_bids(soup):
     for nobr in nobrs:
         bids.append(nobr.text)
     return bids
-
-
 
 
 def Add_players_to_database(player_database, trs, player_IDs, bids):
@@ -242,41 +246,41 @@ def Bid_on_player(session, player_ID):
     constructed_website = spieler_beobachten_website + str(player_ID)
     session.get(constructed_website)
 
-# def Change_transfermarkt_suche_data(player_typ):
+def Change_transfermarkt_suche_data(player_typ):
+    suchpos_prestring = "suchpos"
+    # Deselect all positions
+    for pos in range(0, len(transfermarkt_suchpositionen)):
+        suchpos = suchpos_prestring + str(pos)
+        transfermarkt_suche[suchpos] = 0
+    # Set position for search
+    suchpos_index = transfermarkt_suchpositionen.index(player_typ['Pos'])
+    suchpos = suchpos_prestring + str(suchpos_index)
+    # Calc properties for search
+    min_alter = max_alter = player_typ['Alter']
+    alter_range = str(str(min_alter)+";"+str(max_alter))
+    budget = marktwertAnalyse.budget
+    min_staerke = max_starke = player_typ['Staerke']
+    staerke_range = str(str(min_staerke)+";"+str(max_starke))
+    rel_mw_abstand = 25
+    # Set all other properties for search
+    transfermarkt_suche[suchpos] = suchpos_index
+    transfermarkt_suche['alt_von'] = min_alter
+    transfermarkt_suche['alt_bis'] = max_alter
+    transfermarkt_suche['age'] = alter_range
+    transfermarkt_suche['max_gebot'] = budget
+    transfermarkt_suche['staerke_von'] = min_staerke
+    transfermarkt_suche['staerke_bis'] = max_starke
+    transfermarkt_suche['strength'] = staerke_range
+    transfermarkt_suche['rel_mw_abstand'] = rel_mw_abstand
 
-
-def Search_in_Transfermarkt(profitable_transfers):
+def Search_in_Transfermarkt(session, profitable_transfers):
     # Search in transfermarkt for given player_types
     player_database = []
     suchpos_prestring = "suchpos"
     for p in profitable_transfers:
-        # Deselect all positions
-        for pos in range(0, len(transfermarkt_suchpositionen)):
-            suchpos = suchpos_prestring + str(pos)
-            transfermarkt_suche[suchpos] = 0
-        # Set position for search
-        suchpos_index = transfermarkt_suchpositionen.index(p['Pos'])
-        suchpos = suchpos_prestring + str(suchpos_index)
-        # Calc properties for search
-        min_alter = max_alter = p['Alter']
-        alter_range = str(str(min_alter)+";"+str(max_alter))
-        budget = marktwertAnalyse.budget
-        min_staerke = max_starke = p['Staerke']
-        staerke_range = str(str(min_staerke)+";"+str(max_starke))
-        rel_mw_abstand = 25
-        # Set all other properties for search
-        transfermarkt_suche[suchpos] = suchpos_index
-        transfermarkt_suche['alt_von'] = min_alter
-        transfermarkt_suche['alt_bis'] = max_alter
-        transfermarkt_suche['age'] = alter_range
-        transfermarkt_suche['max_gebot'] = budget
-        transfermarkt_suche['staerke_von'] = min_staerke
-        transfermarkt_suche['staerke_bis'] = max_starke
-        transfermarkt_suche['strength'] = staerke_range
-        transfermarkt_suche['rel_mw_abstand'] = rel_mw_abstand
+        Change_transfermarkt_suche_data(p)
         # Executes the search with updated data
-        session = requests.Session()
-        soup = Navigate_to_website(session, main_website, loginData, transfermarkt_website, transfermarkt_suche)
+        soup = Navigate_to_website_simple(session, transfermarkt_website, transfermarkt_suche)
         trs = Get_player_trs(soup)
         player_IDs = Get_player_IDs(trs)
         bids = Get_bids(soup)
@@ -313,7 +317,9 @@ def Analyse_realistic_price(session, last_spieltag_analysed, average_transfersum
     average_price = 0
     gesamt_spielerTyp_summe = 0
     gesamt_spielerTyp_anzahl = 0
-    for spieltag in range(min(last_spieltag_analysed, aktueller_spieltag) + 1,aktueller_spieltag + 1):
+    if (forcing_reload == True):
+        last_spieltag_analysed = 0
+    for spieltag in range(min(last_spieltag_analysed, aktueller_spieltag),aktueller_spieltag + 1):
         spielerwechsel_data['spieltag'] = spieltag
         spielerwechsel_website_response = session.post(spielerwechsel_website, data=spielerwechsel_data)
         soup = BeautifulSoup(spielerwechsel_website_response.content)
@@ -328,9 +334,8 @@ def Analyse_realistic_price(session, last_spieltag_analysed, average_transfersum
             transfersumme = transfersumme.replace(" ","")
             transfersumme = int(transfersumme.replace("€",""))
             spieltag_summe += transfersumme
-            # print(transfersumme)
         if (spieltag_spieler_anzahl > 0):
-            average_price = str(spieltag_summe/spieltag_spieler_anzahl)
+            average_price = spieltag_summe/spieltag_spieler_anzahl
             print(average_price)
         else:
             print("0")
@@ -338,7 +343,6 @@ def Analyse_realistic_price(session, last_spieltag_analysed, average_transfersum
         gesamt_spielerTyp_summe += spieltag_summe
         gesamt_spielerTyp_anzahl += spieltag_spieler_anzahl
     if (gesamt_spielerTyp_anzahl > 0):
-        anzahl_string = "Found " + str(gesamt_spielerTyp_anzahl) + " Spieler!"
         average_price = gesamt_spielerTyp_summe/gesamt_spielerTyp_anzahl
     return average_price
 
@@ -348,6 +352,8 @@ def Get_average_transfersummen(counter, key):
     player = already_analysed_players[counter]
     player_json = json.loads(player)
     current_average_transfersummen = player_json[key]
+    current_average_transfersummen = map(int, current_average_transfersummen)
+    print(current_average_transfersummen)
     return current_average_transfersummen
 
 def Analyse_realistic_profit(session, counter, aktueller_spieltag, spieler_dict):
@@ -360,10 +366,16 @@ def Analyse_realistic_profit(session, counter, aktueller_spieltag, spieler_dict)
     marktwert_sell = spieler_dict['Marktwert_sell']
     last_spieltag_analysed = Last_spieltag_analysed()
     print("--------BUY-------")
-    average_transfersummen_buy = Get_average_transfersummen(counter, "Spieltag_average_transfersummen_buy")
+    if (forcing_reload):
+        average_transfersummen_buy = []
+    else:
+        average_transfersummen_buy = Get_average_transfersummen(counter, "Spieltag_average_transfersummen_buy")
     transfersumme_average_buy = Analyse_realistic_price(session, last_spieltag_analysed, average_transfersummen_buy, aktueller_spieltag, pos, alter, staerke)
     print("--------SELL-------")
-    average_transfersummen_sell = Get_average_transfersummen(counter, "Spieltag_average_transfersummen_sell")
+    if (forcing_reload):
+        average_transfersummen_sell = []
+    else:
+        average_transfersummen_sell = Get_average_transfersummen(counter, "Spieltag_average_transfersummen_sell")
     transfersumme_average_sell = Analyse_realistic_price(session, last_spieltag_analysed, average_transfersummen_sell, aktueller_spieltag, pos, alter + marktwertAnalyse.anz_saison, staerke + marktwertAnalyse.anz_saison)
     real_profit = transfersumme_average_sell - transfersumme_average_buy
     real_profit = real_profit - marktwertAnalyse.Ausgaben_pro_spieler(staerke, marktwertAnalyse.anz_saison)
@@ -642,7 +654,7 @@ def Get_profitable_transfers(is_same_input):
 
 def Calculate_real_profits(profitable_transfers, session, aktueller_spieltag, is_same_input):
     players_with_real_profit = []
-    if ((Last_spieltag_analysed() == aktueller_spieltag) and is_same_input):
+    if ((Last_spieltag_analysed() == aktueller_spieltag) and is_same_input and forcing_reload == False):
         file = open(file_name, 'r')
         spieler_typen = file.readlines()
         file.close()
@@ -674,6 +686,45 @@ def Write_results_to_file(aktueller_spieltag, profitable_transfers, players_with
         file.write(spieler_json + "\n")
     file.close()
 
+def Renew_contracts(session):
+    response = session.get(team_website)
+    soup = BS(response.content)
+    # finds 54 trs, delete first 14 rows and last 20 rows
+    trs = soup.find_all('tr', recursive=True)[14:-20]
+    number_of_player = len(trs)
+    for tr in trs:
+        hlink = tr.find('a')
+        href = hlink['href']
+        generated_link = main_website + href
+        print(generated_link)
+        player_response = session.get(generated_link)
+        #soup2 = BS(player_response.content)
+        #div = soup2.find('div', attrs={"id":"details_einfach"})
+        #tbody = div.find('tbody')
+        #trs2 = tbody.findAll('tr', recursive=False)
+        #for tr2 in trs2:
+            #print(tr2)
+        # print(div)
+        tableDatas = tr.findAll('td')
+        spans = tr.findAll('span')
+        name = hlink.get_text(' ', strip=True)
+        # age = tableDatas[7].get_text(' ', strip=True)
+        strength = int(spans[10].get_text(' ', strip=True))
+        awp = str(spans[17].get_text(' ', strip=True))
+        awp = int(awp.replace(".",""))
+        remaining_contract = int(spans[21].get_text(' ', strip=True))
+        diff_to_next_strength = int(awp_grenzen[strength] - awp)
+        # print(name + ": Stärke = " + str(strength) + ", AWP = " + str(awp))
+        if (diff_to_next_strength <= 0):
+            print(name + " IS GOING TO BE STRONGER!!!")
+        print(name + " has " + str(remaining_contract) + " remaining days of contract")
+        '''
+        for span in spans:
+            print(span.get_text(' ', strip=True))
+        '''
+        print("-------------------------")
+
+
 def main():
     # Get player data from transfermarkt
     # Set values for your search in marktwertAnalyse.
@@ -681,17 +732,18 @@ def main():
     profitable_transfers = Get_profitable_transfers(is_same_input)
     session = requests.Session()
     session.post(main_website, data=loginData, headers={"Referer": main_website})
-    session = requests.Session()
-    session.post(main_website, data=loginData, headers={"Referer": main_website})
+    #Renew_contracts(session)
     aktueller_spieltag = Get_aktuellen_spieltag(session)
     players_with_real_profit = Calculate_real_profits(profitable_transfers, session, aktueller_spieltag, is_same_input)
     Write_results_to_file(aktueller_spieltag, profitable_transfers, players_with_real_profit)
     Plot_results(aktueller_spieltag)
-    # Search_in_Transfermarkt(profitable_transfers)
+    # Search_in_Transfermarkt(session, profitable_transfers)
 
 
 
-# TODO: MAKE A GUI
+# TODO: Noch darf das Programm nicht zwischen ca. 3 und 7 Uhr früh laufen, da ein neuer Spieltag zufolge hätte, dass die Spielerwechsel erneut durchsucht werden
+# TODO: die Transfers aber noch nicht durchgeführt wurden. Es wird also vom Programm angenommen, dass Transfers getätigt wurden, obwohl dies erst um 7 Uhr der Fall ist.
+# TODO: Das Programm speichert dann, dass dieser Speiltag schon analysiert wurde und wertet jeden durchschnittlichen SpielertypTransfer mit 0
 
 
 # Create_GUI()
