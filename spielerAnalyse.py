@@ -261,7 +261,7 @@ def Change_transfermarkt_suche_data(player_typ):
     budget = marktwertAnalyse.budget
     min_staerke = max_starke = player_typ['Staerke']
     staerke_range = str(str(min_staerke)+";"+str(max_starke))
-    rel_mw_abstand = 25
+    rel_mw_abstand = 75
     # Set all other properties for search
     transfermarkt_suche[suchpos] = suchpos_index
     transfermarkt_suche['alt_von'] = min_alter
@@ -318,8 +318,9 @@ def Analyse_realistic_price(session, last_spieltag_analysed, average_transfersum
     gesamt_spielerTyp_summe = 0
     gesamt_spielerTyp_anzahl = 0
     if (forcing_reload == True):
-        last_spieltag_analysed = 0
-    for spieltag in range(min(last_spieltag_analysed, aktueller_spieltag),aktueller_spieltag + 1):
+        last_spieltag_analysed = -1
+    for spieltag in range(min(last_spieltag_analysed + 1, aktueller_spieltag),aktueller_spieltag + 1):
+        print("Analyse matchday: " + str(spieltag))
         spielerwechsel_data['spieltag'] = spieltag
         spielerwechsel_website_response = session.post(spielerwechsel_website, data=spielerwechsel_data)
         soup = BeautifulSoup(spielerwechsel_website_response.content)
@@ -346,17 +347,21 @@ def Analyse_realistic_price(session, last_spieltag_analysed, average_transfersum
         average_price = gesamt_spielerTyp_summe/gesamt_spielerTyp_anzahl
     return average_price
 
-def Get_average_transfersummen(counter, key):
+def Get_average_transfersummen(pos, alter, staerke, key):
     file = open(file_name, 'r')
     already_analysed_players = file.readlines()[-marktwertAnalyse.top_n_transfers:]
-    player = already_analysed_players[counter]
-    player_json = json.loads(player)
-    current_average_transfersummen = player_json[key]
+    for already_analysed_player in already_analysed_players:
+        already_analysed_player_json = json.loads(already_analysed_player)
+        if (already_analysed_player_json["Pos"] == pos):
+            if (already_analysed_player_json["Alter"] == alter):
+                if (already_analysed_player_json["Staerke"] == staerke):
+                    player = already_analysed_player_json
+    current_average_transfersummen = player[key]
     current_average_transfersummen = map(int, current_average_transfersummen)
-    print(current_average_transfersummen)
+    # print(current_average_transfersummen)
     return current_average_transfersummen
 
-def Analyse_realistic_profit(session, counter, aktueller_spieltag, spieler_dict):
+def Analyse_realistic_profit(session, aktueller_spieltag, spieler_dict):
     "Analyses the realstic profit per profit by scanning Spielerwechsel"
     pos = spieler_dict['Pos']
     alter = spieler_dict['Alter']
@@ -369,13 +374,13 @@ def Analyse_realistic_profit(session, counter, aktueller_spieltag, spieler_dict)
     if (forcing_reload):
         average_transfersummen_buy = []
     else:
-        average_transfersummen_buy = Get_average_transfersummen(counter, "Spieltag_average_transfersummen_buy")
+        average_transfersummen_buy = Get_average_transfersummen(pos, alter, staerke, "Spieltag_average_transfersummen_buy")
     transfersumme_average_buy = Analyse_realistic_price(session, last_spieltag_analysed, average_transfersummen_buy, aktueller_spieltag, pos, alter, staerke)
     print("--------SELL-------")
     if (forcing_reload):
         average_transfersummen_sell = []
     else:
-        average_transfersummen_sell = Get_average_transfersummen(counter, "Spieltag_average_transfersummen_sell")
+        average_transfersummen_sell = Get_average_transfersummen(pos, alter, staerke, "Spieltag_average_transfersummen_sell")
     transfersumme_average_sell = Analyse_realistic_price(session, last_spieltag_analysed, average_transfersummen_sell, aktueller_spieltag, pos, alter + marktwertAnalyse.anz_saison, staerke + marktwertAnalyse.anz_saison)
     real_profit = transfersumme_average_sell - transfersumme_average_buy
     real_profit = real_profit - marktwertAnalyse.Ausgaben_pro_spieler(staerke, marktwertAnalyse.anz_saison)
@@ -663,11 +668,9 @@ def Calculate_real_profits(profitable_transfers, session, aktueller_spieltag, is
             spieler_typ_json = json.loads(spieler_typ)
             players_with_real_profit.append(spieler_typ_json)
     else:
-        counter = 0
         for p in profitable_transfers:
-            spieler = Analyse_realistic_profit(session, counter, aktueller_spieltag, p)
+            spieler = Analyse_realistic_profit(session, aktueller_spieltag, p)
             players_with_real_profit.append(spieler)
-            counter += 1
         players_with_real_profit = sorted(players_with_real_profit, key=lambda k: k['Realistischer_gewinn'])
         players_with_real_profit.reverse()
     return players_with_real_profit
@@ -736,8 +739,8 @@ def main():
     aktueller_spieltag = Get_aktuellen_spieltag(session)
     players_with_real_profit = Calculate_real_profits(profitable_transfers, session, aktueller_spieltag, is_same_input)
     Write_results_to_file(aktueller_spieltag, profitable_transfers, players_with_real_profit)
-    Plot_results(aktueller_spieltag)
     # Search_in_Transfermarkt(session, profitable_transfers)
+    Plot_results(aktueller_spieltag)
 
 
 
